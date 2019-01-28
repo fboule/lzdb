@@ -20,6 +20,8 @@
 ################################################################################
 
 class Dummy(object):
+    __counter = 0
+
     def cursor(self):
         return self
 
@@ -30,7 +32,8 @@ class Dummy(object):
         print("Dummy commit")
 
     def fetchone(self):
-        return [0]
+        self.__counter = self.__counter + 1
+        return [self.__counter]
 
 
 class LZDB(object):
@@ -46,14 +49,16 @@ class LZDB(object):
             self.__items = []
 
         def insert(self, dbitem):
-            searchfor = [ dbitem[x] for x in self.pkeys ]
             replace = False
-            for i in range(len(self.__items)):
-                values = [ self.__items[i][x] for x in self.pkeys ]
-                if values == searchfor:
-                    replace = True
-                    self.__items[i] = dbitem
-            if not replace: self.__items.append(dbitem)
+            if len(self.pkeys) > 0:
+                searchfor = [ dbitem[x] for x in self.pkeys ]
+                for i in range(len(self.__items)):
+                    values = [ self.__items[i][x] for x in self.pkeys ]
+                    if values == searchfor:
+                        replace = True
+                        self.__items[i] = dbitem
+            if not replace: 
+                self.__items.append(dbitem)
 
         def query(self, **pkeys):
             searchfor = [ pkeys[x] for x in self.pkeys ]
@@ -92,7 +97,6 @@ class LZDB(object):
                 for k in kkeys:
                     s = s + "'%s'," % dbitem[k]
                 s = s.strip(',')+")"
-                print(s)
                 db.execute(s)
                 db.execute('select lastval()')
                 dbitem.id = db.fetchone()[0]
@@ -165,15 +169,23 @@ if __name__ == "__main__":
     item1['starttime'] = '01-jan-2000:00:00:00'
     item1['endtime'] = '02-jan-2000:00:00:00'
 
+    item4 = lzdbItem()
+    item4['param'] = '2004'
+    item4['starttime'] = '02-jan-2000:00:00:00'
+    item4['endtime'] = '03-jan-2000:00:00:00'
+
     item2 = lzdbItem(pattern = item1)
     item2['clusters'] = [1,2,3]
-    item2['freqmap'] = [4,5,6]
+    item2['freqmap']=[4,5,6]
 
-    item3 = lzdbItem(pattern = item1)
-    item3['clusters'] = [2,3,4]
-    item3['freqmap'] = [5,6,7]
+    item3 = lzdbItem(pattern=item4)
+    item3['clusters']=[2,3,4]
+    item3['freqmap']=[5,6,7]
 
     dbms.insert(item1)
+    dbms.insert(item4)
     dbms.insert(item2)
     dbms.insert(item3)
+
     dbms.commit()
+
