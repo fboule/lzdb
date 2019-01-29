@@ -55,7 +55,8 @@ class LZDB(object):
 
         def commit(self, db):
             pkeys = ','.join(sorted(self.pkeys))
-            kkeys = sorted([ x for x in self.__items[0].keys() if x not in self.pkeys ])
+            akeys = sorted(self.__items[0].keys())
+            kkeys = sorted([ x for x in akeys if x not in self.pkeys ])
             keys = ",".join(kkeys)
             db.execute("insert into lzdb(pkeys,keys) values('%s','%s') on conflict(pkeys, keys) do nothing" % (pkeys, keys))
 
@@ -69,19 +70,31 @@ class LZDB(object):
                     kk = '%s integer references lzdb_%i' % (k, dbitem.collection.id)
                     s="%s, %s" % (s, kk)
             k = ' varchar, '.join(kkeys) + ' varchar'
-            s="%s, %s)" % (s, k)
+            s="%s, %s" % (s, k)
+            if len(pkeys) > 0:
+                s = s + ", unique(%s))" % pkeys
+            else:
+                s = s + ", unique(%s))" % ','.join(akeys)
             db.execute(s)
 
             for dbitem in self.__items:
                 ss = (pkeys+','+keys).strip(',')
-                s = "insert into lzdb_%i(%s) values(" % (self.id, ss)
+                s = "begin; insert into lzdb_%i(%s) values(" % (self.id, ss)
                 for k in self.pkeys:
                     s = s + str(dbitem[k].id) + ','
                 for k in kkeys:
                     s = s + "'%s'," % dbitem[k]
-                s = s.strip(',')+")"
+                s = s.strip(',')+") " 
+                if len(self.pkeys) > 0: 
+                    s = s + "on conflict(%s) do update set " % ','.join(self.pkeys)
+                    kk = []
+                    for k in kkeys:
+                        kk.append("%s = EXCLUDED.%s" % (k, k))
+                    s = s + ', '.join(kk)
+                else:
+                    s = s + "on conflict(%s) do update set %s = EXCLUDED.%s" % (keys, akeys[0], akeys[0])
+                s = s + " returning id;"
                 db.execute(s)
-                db.execute('select lastval()')
                 dbitem.id = db.fetchone()[0]
 
     def __init__(self, conn):
