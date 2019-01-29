@@ -19,23 +19,6 @@
 #
 ################################################################################
 
-class Dummy(object):
-    __counter = 0
-
-    def cursor(self):
-        return self
-
-    def execute(self, s):
-        print(s)
-
-    def commit(self):
-        print("Dummy commit")
-
-    def fetchone(self):
-        self.__counter = self.__counter + 1
-        return [self.__counter]
-
-
 class LZDB(object):
     __db = None
     __collections = None
@@ -159,33 +142,3 @@ class lzdbItem(dict):
         for k, ref in refs.items():
             self[k] = ref
         
-
-if __name__ == "__main__":
-    db = Dummy()
-    dbms = LZDB(db)
-
-    item1 = lzdbItem()
-    item1['param'] = '2004'
-    item1['starttime'] = '01-jan-2000:00:00:00'
-    item1['endtime'] = '02-jan-2000:00:00:00'
-
-    item4 = lzdbItem()
-    item4['param'] = '2004'
-    item4['starttime'] = '02-jan-2000:00:00:00'
-    item4['endtime'] = '03-jan-2000:00:00:00'
-
-    item2 = lzdbItem(pattern = item1)
-    item2['clusters'] = [1,2,3]
-    item2['freqmap']=[4,5,6]
-
-    item3 = lzdbItem(pattern=item4)
-    item3['clusters']=[2,3,4]
-    item3['freqmap']=[5,6,7]
-
-    dbms.insert(item1)
-    dbms.insert(item4)
-    dbms.insert(item2)
-    dbms.insert(item3)
-
-    dbms.commit()
-
