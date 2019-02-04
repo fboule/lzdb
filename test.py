@@ -19,27 +19,11 @@
 #
 ################################################################################
 
+import psycopg2 as pg
 from lzdb import *
 
-class Dummy(object):
-    __counter = 0
-
-    def cursor(self):
-        return self
-
-    def execute(self, s):
-        print(s)
-
-    def commit(self):
-        print("Dummy commit")
-
-    def fetchone(self):
-        self.__counter = self.__counter + 1
-        return [self.__counter]
-
-
-db = Dummy()
-dbms = LZDB(db)
+conn = pg.connect(database = 'test')
+dbms = LZDB(conn)
 
 item1 = lzdbItem()
 item1['param'] = '2004'
