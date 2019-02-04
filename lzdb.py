@@ -29,7 +29,7 @@ class LZDB(object):
 
     class Collection(object):
         id = None
-        pkeys = None
+        pkeys = []
         keys = None
         __items = None
         __dbms = None
@@ -77,6 +77,7 @@ class LZDB(object):
                                 dbitem[kk] = datetime.datetime.strptime(items[kk], "%Y-%m-%d %H:%M:%S")
                             except:
                                 dbitem[kk] = items[kk]
+                dbitem.collection = self
                 self.__items.append(dbitem)
 
         def lookup(self, k, v):
@@ -120,6 +121,7 @@ class LZDB(object):
                         replace = True
                         self.__items[i] = dbitem
             if not replace: 
+                dbitem.collection = self
                 self.__items.append(dbitem)
 
         def query(self, **pkeys):
@@ -188,6 +190,9 @@ class LZDB(object):
         self.__collections = []
 
         db = conn.cursor()
+        db.execute("select exists(select 1 from information_schema.tables where table_schema='public' and table_name='lzdb')")
+        if not db.fetchone()[0]: return
+
         db.execute("select id, pkeys, keys from lzdb")
         items = db.fetchall()
         if LZDB.traceon: print('LZDB tables found:', len(items))
@@ -211,7 +216,6 @@ class LZDB(object):
             self.__collections.append(current)
 
         current.insert(dbitem)
-        dbitem.collection = current
 
     def size(self, pkeys):
         current = None
