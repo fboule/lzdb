@@ -25,6 +25,7 @@ import datetime
 class LZDB(object):
     __db = None
     __collections = None
+    traceon = False
 
     class Collection(object):
         id = None
@@ -51,6 +52,13 @@ class LZDB(object):
             k.extend(keys)
             db.execute("select id,%s from lzdb_%s" % (','.join(k), id))
             rows = db.fetchall()
+            if LZDB.traceon: 
+                if len(pkeys) == 0: 
+                    print('Found %i rows in lzdb_%s(%s)' % (len(rows),id,','.join(k)))
+                else: 
+                    print('Found %i rows in lzdb_%s(%s) with references:' % (len(rows),id,','.join(k)))
+                    for frow in self.__fkeys:
+                        print('  %(name)s to %(table)s' % frow)
             for row in rows:
                 items = dict(zip(['id'] + k, row))
                 dbitem = lzdbItem()
@@ -181,7 +189,9 @@ class LZDB(object):
 
         db = conn.cursor()
         db.execute("select id, pkeys, keys from lzdb")
-        for item in db.fetchall():
+        items = db.fetchall()
+        if LZDB.traceon: print('LZDB tables found:', len(items))
+        for item in items:
             current = LZDB.Collection(self)
             if len(item[1]) > 0: current.pkeys = item[1].split(',')
             current.keys = item[2].split(',')
