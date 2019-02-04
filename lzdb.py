@@ -19,20 +19,91 @@
 #
 ################################################################################
 
+from collections import Counter
+import datetime
+
 class LZDB(object):
     __db = None
     __collections = None
 
     class Collection(object):
+        id = None
         pkeys = None
+        keys = None
         __items = None
+        __dbms = None
+        __fkeys = None
 
-        def __init__(self, dbitem):
-            self.pkeys = dbitem.pkeys
+        def __init__(self, dbms, dbitem = None):
+            self.__dbms = dbms
+            if dbitem is not None: 
+                self.pkeys = dbitem.pkeys
+                self.keys = [ x for x in dbitem.keys() if x not in dbitem.pkeys ]
             self.__items = []
+
+        def read(self, db, id, pkeys, keys):
+            self.id = id
+            k = []
+            if len(pkeys) > 0: 
+                k = pkeys.split(',')
+                self.read_fkeys(db, id)
+            keys = keys.split(',')
+            k.extend(keys)
+            db.execute("select id,%s from lzdb_%s" % (','.join(k), id))
+            rows = db.fetchall()
+            for row in rows:
+                items = dict(zip(['id'] + k, row))
+                dbitem = lzdbItem()
+                dbitem.id = int(items['id'])
+                for kk in k: 
+                    if kk in pkeys: 
+                        dbitem[kk] = self.lookup(kk, items[kk])
+                    else:
+                        dbitem[kk] = None
+                        try:
+                            dbitem[kk] = eval(items[kk])
+                        except:
+                            pass
+                        if dbitem[kk] is None:
+                            try:
+                                dbitem[kk] = datetime.datetime.strptime(items[kk], "%Y-%m-%d %H:%M:%S")
+                            except:
+                                dbitem[kk] = items[kk]
+                self.__items.append(dbitem)
+
+        def lookup(self, k, v):
+            collid = None
+            for row in self.__fkeys:
+                if row['name'] == k:
+                    collid = row['table'].strip('lzdb_')
+            if collid is None: return None
+            coll = self.__dbms.querycollbyid(collid)
+            return coll.querybyid(v)
+
+        def read_fkeys(self, db, id):
+            if self.__fkeys is None:
+                s = """SELECT 
+                    kcu.column_name, 
+                    ccu.table_name AS foreign_table_name 
+                FROM 
+                    information_schema.table_constraints AS tc 
+                    JOIN information_schema.key_column_usage AS kcu
+                      ON tc.constraint_name = kcu.constraint_name
+                      AND tc.table_schema = kcu.table_schema
+                    JOIN information_schema.constraint_column_usage AS ccu
+                      ON ccu.constraint_name = tc.constraint_name
+                      AND ccu.table_schema = tc.table_schema
+                WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name='lzdb_%s';""" % id
+                db.execute(s)
+                items = db.fetchall()
+                self.__fkeys = []
+                for item in items:
+                    self.__fkeys.append(dict(zip(['name', 'table'], item)))
 
         def insert(self, dbitem):
             replace = False
+            if self.keys is None:
+                self.keys = [ x for x in dbitem.keys() if x not in dbitem.pkeys ]
             if len(self.pkeys) > 0:
                 searchfor = [ dbitem[x] for x in self.pkeys ]
                 for i in range(len(self.__items)):
@@ -44,10 +115,16 @@ class LZDB(object):
                 self.__items.append(dbitem)
 
         def query(self, **pkeys):
-            searchfor = [ pkeys[x] for x in self.pkeys ]
+            searchfor = sorted([ x for x in pkeys.keys() if pkeys[x] is not None])
+            v1 = [ pkeys[x] for x in searchfor if pkeys[x] is not None ]
             for dbitem in self.__items:
-                values = [ dbitem[x] for x in self.pkeys ]
-                if values == searchfor: return dbitem
+                values = [ dbitem[x] for x in searchfor ]
+                if values == v1: return dbitem
+            return None
+
+        def querybyid(self, id):
+            for dbitem in self.__items:
+                if dbitem.id == id: return dbitem
             return None
 
         def size(self):
@@ -102,6 +179,15 @@ class LZDB(object):
         self.__db = conn.cursor()
         self.__collections = []
 
+        db = conn.cursor()
+        db.execute("select id, pkeys, keys from lzdb")
+        for item in db.fetchall():
+            current = LZDB.Collection(self)
+            if len(item[1]) > 0: current.pkeys = item[1].split(',')
+            current.keys = item[2].split(',')
+            self.__collections.append(current)
+            current.read(db, *item)
+
     def insert(self, dbitem):
         current = None
 
@@ -111,7 +197,7 @@ class LZDB(object):
                 break
 
         if current is None:
-            current = LZDB.Collection(dbitem)
+            current = LZDB.Collection(self, dbitem)
             self.__collections.append(current)
 
         current.insert(dbitem)
@@ -126,18 +212,18 @@ class LZDB(object):
 
         return None
         
+    def querycollbyid(self, id):
+        return self.__collections[int(id)-1]
+
     def query(self, **pkeys):
-        current = None
-
+        kk = sorted(pkeys.keys())
         for collection in self.__collections:
-            if list(pkeys.keys()) == collection.pkeys:
-                current = collection
-                break
-
-        if current is None:
-            return None
-
-        return current.query(**pkeys)
+            if collection.pkeys is not None:
+                if kk == sorted(collection.pkeys + collection.keys):
+                    return collection.query(**pkeys)
+            if kk == sorted(collection.keys):
+                return collection.query(**pkeys)
+        return None
 
     def commit(self):
         self.__db.execute('create table if not exists lzdb(id serial primary key, pkeys varchar, keys varchar, unique(pkeys, keys))')
