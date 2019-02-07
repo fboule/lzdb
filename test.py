@@ -22,6 +22,8 @@
 import psycopg2 as pg
 from lzdb import *
 
+LZDB.traceon = True
+
 conn = pg.connect(database = 'test')
 dbms = LZDB(conn)
 
@@ -50,3 +52,9 @@ dbms.insert(item3)
 
 dbms.commit()
 
+item5 = lzdbItem(pattern = item1)
+item5['timefreq'] = [1,2,3]
+
+dbms.insert(item5)
+
+dbms.commit()
