@@ -205,15 +205,23 @@ class LZDB(object):
 
     def insert(self, dbitem):
         current = None
+        kkeys = sorted(dbitem.keys())
 
         for collection in self.__collections:
-            if dbitem.pkeys == collection.pkeys:
+            ckeys = sorted(collection.keys)
+            if collection.pkeys is not None: ckeys = sorted(ckeys + collection.pkeys)
+            if ckeys == kkeys:
+                if LZDB.traceon: 
+                    kk = collection.pkeys or []
+                    kk = sorted(kk + collection.keys)
+                    print("Matching collection", kk)
                 current = collection
                 break
 
         if current is None:
             current = LZDB.Collection(self, dbitem)
             self.__collections.append(current)
+            if LZDB.traceon: print("New collection", current.pkeys or '', current.keys)
 
         current.insert(dbitem)
 
