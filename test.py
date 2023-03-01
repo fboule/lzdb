@@ -19,42 +19,47 @@
 #
 ################################################################################
 
+# Use cases:
+# * Create an item will create it automatically
+# * Duplicate records are allowed (PK not provided)
+# * A record can refer other ones (FK)
+# * A record can be updated
+# * Thin provisioning: item with fields a,b,c matches table with fields a,b,c,d,e?
+# * Smart provisioning: item creation can be declared "like" another (no thin provisioning, but prefill item with None values)
+# * A record can be augmented before commit? (TBD) move item around
+# * A record can be augmented after commit? (TBD) alter table? move item to another table? what about FKs? too heavy to implement?
+
 import psycopg2 as pg
 from lzdb import *
 
 LZDB.traceon = True
 
-conn = pg.connect(database = 'test')
+conn = pg.connect(database = 'test', host='dbms')
 dbms = LZDB(conn)
 
-item1 = lzdbItem()
-item1['param'] = '2004'
-item1['starttime'] = '01-jan-2000:00:00:00'
-item1['endtime'] = '02-jan-2000:00:00:00'
+# pkey is param, starttime, endtime
+item1 = dbms.newItem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
+item4 = dbms.newItem(param='2004', starttime='04-jan-2000:00:00:00', endtime='05-jan-2000:00:00:00')
 
-item4 = lzdbItem()
-item4['param'] = '2004'
-item4['starttime'] = '02-jan-2000:00:00:00'
-item4['endtime'] = '03-jan-2000:00:00:00'
-
-item2 = lzdbItem(pattern = item1)
+# pkey is refers
+item2 = dbms.newItem(refers=item1)
 item2['clusters'] = [1,2,3]
 item2['freqmap']=[4,5,6]
 
-item3 = lzdbItem(pattern=item4)
+# pkey is refers
+item3 = dbms.newItem(refers=item1)
 item3['clusters']=[2,3,4]
 item3['freqmap']=[5,6,7]
 
-dbms.insert(item1)
-dbms.insert(item4)
-dbms.insert(item2)
-dbms.insert(item3)
+dbms.commit()
+
+# pkey is refers1, refers2
+item5 = dbms.newItem(refers1=item1,refers2=item2)
+item5.assign(timefreq=[1,2,3])
 
 dbms.commit()
 
-item5 = lzdbItem(pattern = item1)
-item5['timefreq'] = [1,2,3]
-
-dbms.insert(item5)
+# item5 is augmented after commit... alter table?
+item5['freqmap'] = [2,3,4]
 
 dbms.commit()
