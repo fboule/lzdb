@@ -19,13 +19,24 @@
 #
 ################################################################################
 
-from collections import Counter
 import datetime
 
 class LZDB(object):
     __db = None
     __collections = None
     traceon = False
+    staged = []
+
+    class lzdbItem(dict):
+        pkeys = None
+        collection = None
+        id = None
+
+        def __init__(self, **refs):
+            self.pkeys = list(refs.keys())
+            for k, ref in refs.items():
+                self[k] = ref
+
 
     class Collection(object):
         id = None
@@ -61,7 +72,7 @@ class LZDB(object):
                         print('  %(name)s to %(table)s' % frow)
             for row in rows:
                 items = dict(zip(['id'] + k, row))
-                dbitem = lzdbItem()
+                dbitem = self.__dbms.newItem(staging = False)
                 dbitem.id = int(items['id'])
                 for kk in k: 
                     if kk in pkeys: 
@@ -187,7 +198,7 @@ class LZDB(object):
     def __init__(self, conn):
         self.__conn = conn
         self.__db = conn.cursor()
-        self.__collections = []
+        self.__collections = {}
 
         db = conn.cursor()
         db.execute("select exists(select 1 from information_schema.tables where table_schema='public' and table_name='lzdb')")
@@ -200,14 +211,22 @@ class LZDB(object):
             current = LZDB.Collection(self)
             if len(item[1]) > 0: current.pkeys = item[1].split(',')
             current.keys = item[2].split(',')
-            self.__collections.append(current)
             current.read(db, *item)
+            self.__collections[current.id] = current
 
-    def insert(self, dbitem):
+    def stage(self, dbitem):
+        self.staged.append(dbitem)
+
+    def flush(self):
+        for dbitem in self.staged:
+            self.flushitem(dbitem)
+        self.staged = []
+
+    def flushitem(self, dbitem):
         current = None
         kkeys = sorted(dbitem.keys())
 
-        for collection in self.__collections:
+        for collection in self.__collections.values():
             ckeys = sorted(collection.keys)
             if collection.pkeys is not None: ckeys = sorted(ckeys + collection.pkeys)
             if ckeys == kkeys:
@@ -220,7 +239,7 @@ class LZDB(object):
 
         if current is None:
             current = LZDB.Collection(self, dbitem)
-            self.__collections.append(current)
+            self.__collections[current.id] = current
             if LZDB.traceon: print("New collection", current.pkeys or '', current.keys)
 
         current.insert(dbitem)
@@ -228,18 +247,18 @@ class LZDB(object):
     def size(self, pkeys):
         current = None
 
-        for collection in self.__collections:
+        for collection in self.__collections.values():
             if pkeys == collection.pkeys:
                 return collection.size()
 
         return None
         
     def querycollbyid(self, id):
-        return self.__collections[int(id)-1]
+        return self.__collections[int(id)]
 
     def query(self, **pkeys):
         kk = sorted(pkeys.keys())
-        for collection in self.__collections:
+        for collection in self.__collections.values():
             if collection.pkeys is not None:
                 if kk == sorted(collection.pkeys + collection.keys):
                     return collection.query(**pkeys)
@@ -248,18 +267,17 @@ class LZDB(object):
         return None
 
     def commit(self):
+        self.flush()
         self.__db.execute('create table if not exists lzdb(id serial primary key, pkeys varchar, keys varchar, unique(pkeys, keys))')
-        for collection in self.__collections:
+        for collection in self.__collections.values():
             collection.commit(self.__db)
         self.__conn.commit()
 
-class lzdbItem(dict):
-    pkeys = None
-    collection = None
-    id = None
+    def newItem(self, staging = True, **refs):
+        dbitem = self.lzdbItem(**refs)
+        if staging:
+            self.stage(dbitem)
+        else:
+            self.flushitem(dbitem)
+        return dbitem
 
-    def __init__(self, **refs):
-        self.pkeys = list(refs.keys())
-        for k, ref in refs.items():
-            self[k] = ref
-        
