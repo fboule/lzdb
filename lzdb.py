@@ -26,7 +26,6 @@ class LZDB(object):
     __db = None
     __collections = None
     __items = None
-    __staged = []
     traceon = False
 
     class lzdbItem(dict):
@@ -35,14 +34,17 @@ class LZDB(object):
         __collection = None
         __id = None
 
-        def __init__(self, dbms, id=None, **refs):
+        def __init__(self, dbms, id=None, collection=None, **refs):
             self.__ukeys = sorted(refs.keys())
             self.__fkeys = {}
             self.__id = id
             for k, v in refs.items():
                 self[k] = v
                 if isinstance(v, LZDB.lzdbItem): self.__fkeys[k] = v.getCollection()
-            self.__collection = dbms.fetchCollection(self.__ukeys, self.__fkeys)
+            if collection is None:
+                self.__collection = dbms.fetchCollection(self.__ukeys, self.__fkeys)
+            else:
+                self.__collection = collection
 
         def id(self, id = None):
             if id is not None: self.__id = id
@@ -121,7 +123,7 @@ class LZDB(object):
                 obj = {}
                 for field in self.__ukeys:
                     obj[field] = items[field]
-                dbitem = self.__dbms.newItem(staging=False, collection=self, **obj)
+                dbitem = self.__dbms.newItem(collection=self, **obj)
                 dbitem.id(items['id'])
 
         def read_fkeys(self, db, id):
@@ -141,18 +143,7 @@ class LZDB(object):
             items = db.fetchall()
             self.__fkeys = {}
             for field, collid in dict(items).items():
-                self.__fkeys[field] = self.__dbms.findCollection(collid)
-
-        def query(self, **ukeys):
-            searchfor = sorted([x for x in ukeys.keys() if ukeys[x] is not None])
-            v1 = [ukeys[x] for x in searchfor if ukeys[x] is not None]
-            for dbitem in self.__items:
-                values = [dbitem[x] for x in searchfor]
-                if values == v1: return dbitem
-            return None
-
-        def size(self):
-            return len(self.__items)
+                self.__fkeys[field] = self.__dbms.findCollectionByName(collid)
 
         def createNewFields(self, db, dbitem):
             newFields = []
@@ -164,7 +155,7 @@ class LZDB(object):
             db.execute(s)
             self.__fields.extend(newFields)
 
-        def create(self, db):
+        def createTable(self, db):
             ukeys = ','.join(self.__ukeys)
             fields = sorted([x for x in self.__fields if x != 'id'])
             db.execute(
@@ -208,55 +199,10 @@ class LZDB(object):
             self.__collections.append(collection)
             collection.read(db, id)
 
-    def stage(self, dbitem):
-        self.__staged.append(dbitem)
-
-    def flushitem(self, dbitem):
-        current = None
-        kkeys = sorted(dbitem.keys())
-
-        for collection in self.__collections.values():
-            ckeys = sorted(collection.keys)
-            if collection.ukeys is not None: ckeys = sorted(ckeys + collection.ukeys)
-            if ckeys == kkeys:
-                current = collection
-                if LZDB.traceon: print("Matching collection", current.ukeys or '', current.keys)
-                break
-
-        if current is None:
-            current = LZDB.Collection(self, dbitem)
-            self.__collections[current.id] = current
-            if LZDB.traceon: print("New collection", current.ukeys or '', current.keys)
-
-    def size(self, ukeys):
-        current = None
-
-        for collection in self.__collections.values():
-            if ukeys == collection.ukeys:
-                return collection.size()
-
-        return None
-
-    def querycollbyid(self, id):
-        for collection in self.__collections:
-            if collection.getId() == id:
-                return collection
-        return None
-
-    def query(self, **ukeys):
-        kk = sorted(ukeys.keys())
-        for collection in self.__collections.values():
-            if collection.ukeys is not None:
-                if kk == sorted(collection.ukeys + collection.keys):
-                    return collection.query(**ukeys)
-            if kk == sorted(collection.keys):
-                return collection.query(**ukeys)
-        return None
-
     def commit(self):
         self.__db.execute('create table if not exists lzdb(id serial primary key, ukeys varchar, unique(ukeys))')
         for collection in self.__collections:
-            collection.create(self.__db)
+            collection.createTable(self.__db)
         for dbitem in self.__items:
             dbitem.getCollection().createNewFields(self.__db, dbitem)
             fields = sorted(dbitem.keys())
@@ -284,7 +230,7 @@ class LZDB(object):
             if len(rows) > 0 : dbitem.id(rows[0][0])
         self.__conn.commit()
 
-    def newItem(self, staging=True, collection=None, id=None, **refs):
+    def newItem(self, collection=None, id=None, **refs):
         dbitem = None
         for item in self.__items:
             if refs == item.getUniqueDict():
@@ -292,13 +238,9 @@ class LZDB(object):
                 dbitem.set(**refs)
                 break
         if dbitem is None:
-            dbitem = self.lzdbItem(self, **refs)
+            dbitem = self.lzdbItem(self, collection = collection, **refs)
             self.__items.append(dbitem)
         dbitem.id(id)
-        if staging:
-            self.stage(dbitem)
-        elif collection is None:
-            self.flushitem(dbitem)
         return dbitem
 
     def fetchCollection(self, ukeys, fkeys):
@@ -316,7 +258,7 @@ class LZDB(object):
                 return item
         return None
 
-    def findCollection(self, collid):
+    def findCollectionByName(self, collid):
         for collection in self.__collections:
             if collection.getId() == collid:
                 return collection
