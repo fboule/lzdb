@@ -34,12 +34,14 @@ from lzdb import *
 
 LZDB.traceon = True
 
-conn = pg.connect(database = 'test', host='dbms')
+conn = pg.connect(database = 'test', host='localhost')
 dbms = LZDB(conn)
 
 # pkey is param, starttime, endtime
 item1 = dbms.newItem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
 item4 = dbms.newItem(param='2004', starttime='04-jan-2000:00:00:00', endtime='05-jan-2000:00:00:00')
+
+dbms.commit()
 
 # pkey is refers
 item2 = dbms.newItem(refers=item1)
@@ -55,11 +57,12 @@ dbms.commit()
 
 # pkey is refers1, refers2
 item5 = dbms.newItem(refers1=item1,refers2=item2)
-item5.assign(timefreq=[1,2,3])
+# item5.set(k=v) and item5[k]=v are identical
+item5.set(timefreq=[1,2,5])
 
 dbms.commit()
 
 # item5 is augmented after commit... alter table?
-item5['freqmap'] = [2,3,4]
+item5['freqmap'] = [2,3,5]
 
 dbms.commit()
