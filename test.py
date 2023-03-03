@@ -20,14 +20,16 @@
 ################################################################################
 
 # Use cases:
-# * Create an item will create it automatically
-# * Duplicate records are allowed (PK not provided)
-# * A record can refer other ones (FK)
-# * A record can be updated
-# * Thin provisioning: item with fields a,b,c matches table with fields a,b,c,d,e?
-# * Smart provisioning: item creation can be declared "like" another (no thin provisioning, but prefill item with None values)
-# * A record can be augmented before commit? (TBD) move item around
-# * A record can be augmented after commit? (TBD) alter table? move item to another table? what about FKs? too heavy to implement?
+#  * Create an item will create it automatically
+#  * Duplicate records are allowed (PK not provided)
+#  * A record can refer other ones (FK)
+#  * A record can be updated
+#  * A record is created providing the pkeys
+#  * A record can be augmented (data fields only, no pk)
+#
+# Next use cases:
+#  * A data field can be a FK too
+#  * Better support for datetime fields
 
 import psycopg2 as pg
 from lzdb import *
