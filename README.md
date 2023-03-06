@@ -24,7 +24,7 @@ the table.
 
 Let's go for an example in the next section.
 
-**Important note**: everything remains volatile until you explicitly run `dbms.commit()`. An `autocommit` may come in the future.
+==Important note==: everything remains volatile until you explicitly run `dbms.commit()`. An `autocommit` may come in the future.
 
 ## Instanciating a new item
 
@@ -112,7 +112,7 @@ The table will then have the following definition:
 )
 ```
 
-The record will be **updated** as follows:
+The record will be ==updated== as follows:
 
  * id: 1
  * refers: 1
