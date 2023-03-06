@@ -11,10 +11,10 @@ List of supported features:
 
 Initializing LZDB:
 
-``from lzdb import *
+```from lzdb import *
 LZDB.traceon = True # Optional
 conn = pg.connect(database = 'test', host='localhost')
-dbms = LZDB(conn)``
+dbms = LZDB(conn)```
 
 The created tables will be sequentially numbered with the prefix `lzdb__`. The `lzdb` table contains the inventory of all the tables with 
 their virtual primary key. Each table has one primary key which is named `id` and is a sequential number. The virtual primary key is in
@@ -27,11 +27,11 @@ Let's go for an example in the next section.
 
 ## Instanciating a new item
 
-``item1 = dbms.newItem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')``
+```item1 = dbms.newItem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')```
 
 This will create the following table:
 
-``CREATE TABLE IF NOT EXISTS public.lzdb__1
+```CREATE TABLE IF NOT EXISTS public.lzdb__1
 (
     id integer NOT NULL DEFAULT nextval('lzdb__1_id_seq'::regclass),
     endtime character varying,
@@ -39,7 +39,7 @@ This will create the following table:
     starttime character varying,
     CONSTRAINT lzdb__1_pkey PRIMARY KEY (id),
     CONSTRAINT lzdb__1_endtime_param_starttime_key UNIQUE (endtime, param, starttime)
-)``
+)```
 
 In the lzdb table, the following record will be inserted:
  
@@ -52,11 +52,11 @@ Each subsequent item created with the same virtual primary key will end up in th
 
 Let's go with an example:
 
-``item2 = dbms.newItem(refers=item1)``
+```item2 = dbms.newItem(refers=item1)```
 
 This will create a second table with `refers` as virtual primary key and declare the field as foreign key as follows:
 
-``CREATE TABLE IF NOT EXISTS public.lzdb__2
+```CREATE TABLE IF NOT EXISTS public.lzdb__2
 (
     id integer NOT NULL DEFAULT nextval('lzdb__2_id_seq'::regclass),
     refers integer,
@@ -66,7 +66,7 @@ This will create a second table with `refers` as virtual primary key and declare
         REFERENCES public.lzdb__1 (id) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
-)``
+)```
 
 The inserted record will look like the following:
 
@@ -79,18 +79,18 @@ Now, let's attach some data to the records. There are two syntaxes possible.
 
 The dict-way:
 
-``item2['clusters'] = [1,2,3]
-item2['freqmap']=[4,5,6]``
+```item2['clusters'] = [1,2,3]
+item2['freqmap']=[4,5,6]```
 
 The `set` method:
 
-``item2.set(clusters=[1,2,3], freqmap=[4,5,6])``
+```item2.set(clusters=[1,2,3], freqmap=[4,5,6])```
 
 Since the table `lzdb__2` has already been created, it will be altered with the `ADD COLUMN` statement. 
 
 The table will then have the following definition:
 
-``CREATE TABLE IF NOT EXISTS public.lzdb__2
+```CREATE TABLE IF NOT EXISTS public.lzdb__2
 (
     id integer NOT NULL DEFAULT nextval('lzdb__2_id_seq'::regclass),
     refers integer,
@@ -102,7 +102,7 @@ The table will then have the following definition:
         REFERENCES public.lzdb__1 (id) MATCH SIMPLE
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
-)``
+)```
 
 The record will be **updated** as follows:
 
