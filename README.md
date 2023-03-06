@@ -11,7 +11,8 @@ List of supported features:
 
 Initializing LZDB:
 
-```from lzdb import *
+```
+from lzdb import *
 LZDB.traceon = True # Optional
 conn = pg.connect(database = 'test', host='localhost')
 dbms = LZDB(conn)
@@ -28,12 +29,14 @@ Let's go for an example in the next section.
 
 ## Instanciating a new item
 
-```item1 = dbms.newItem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
+```
+item1 = dbms.newItem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
 ```
 
 This will create the following table:
 
-```CREATE TABLE IF NOT EXISTS public.lzdb__1
+```
+CREATE TABLE IF NOT EXISTS public.lzdb__1
 (
     id integer NOT NULL DEFAULT nextval('lzdb__1_id_seq'::regclass),
     endtime character varying,
@@ -55,12 +58,14 @@ Each subsequent item created with the same virtual primary key will end up in th
 
 Let's go with an example:
 
-```item2 = dbms.newItem(refers=item1)
+```
+item2 = dbms.newItem(refers=item1)
 ```
 
 This will create a second table with `refers` as virtual primary key and declare the field as foreign key as follows:
 
-```CREATE TABLE IF NOT EXISTS public.lzdb__2
+```
+CREATE TABLE IF NOT EXISTS public.lzdb__2
 (
     id integer NOT NULL DEFAULT nextval('lzdb__2_id_seq'::regclass),
     refers integer,
@@ -84,20 +89,23 @@ Now, let's attach some data to the records. There are two syntaxes possible.
 
 The dict-way:
 
-```item2['clusters'] = [1,2,3]
+```
+item2['clusters'] = [1,2,3]
 item2['freqmap']=[4,5,6]
 ```
 
 The `set` method:
 
-```item2.set(clusters=[1,2,3], freqmap=[4,5,6])
+```
+item2.set(clusters=[1,2,3], freqmap=[4,5,6])
 ```
 
 Since the table `lzdb__2` has already been created, it will be altered with the `ADD COLUMN` statement. 
 
 The table will then have the following definition:
 
-```CREATE TABLE IF NOT EXISTS public.lzdb__2
+```
+CREATE TABLE IF NOT EXISTS public.lzdb__2
 (
     id integer NOT NULL DEFAULT nextval('lzdb__2_id_seq'::regclass),
     refers integer,
