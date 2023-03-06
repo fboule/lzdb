@@ -19,42 +19,52 @@
 #
 ################################################################################
 
+# Use cases:
+#  * Create an item will create it automatically
+#  * Duplicate records are allowed (PK not provided)
+#  * A record can refer other ones (FK)
+#  * A record can be updated
+#  * A record is created providing the pkeys
+#  * A record can be augmented (data fields only, no pk)
+#
+# Next use cases:
+#  * A data field can be a FK too
+#  * Better support for datetime fields
+
 import psycopg2 as pg
 from lzdb import *
 
 LZDB.traceon = True
 
-conn = pg.connect(database = 'test')
+conn = pg.connect(database = 'test', host='localhost')
 dbms = LZDB(conn)
 
-item1 = lzdbItem()
-item1['param'] = '2004'
-item1['starttime'] = '01-jan-2000:00:00:00'
-item1['endtime'] = '02-jan-2000:00:00:00'
-
-item4 = lzdbItem()
-item4['param'] = '2004'
-item4['starttime'] = '02-jan-2000:00:00:00'
-item4['endtime'] = '03-jan-2000:00:00:00'
-
-item2 = lzdbItem(pattern = item1)
-item2['clusters'] = [1,2,3]
-item2['freqmap']=[4,5,6]
-
-item3 = lzdbItem(pattern=item4)
-item3['clusters']=[2,3,4]
-item3['freqmap']=[5,6,7]
-
-dbms.insert(item1)
-dbms.insert(item4)
-dbms.insert(item2)
-dbms.insert(item3)
+# pkey is param, starttime, endtime
+item1 = dbms.newItem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
+item4 = dbms.newItem(param='2004', starttime='04-jan-2000:00:00:00', endtime='05-jan-2000:00:00:00')
 
 dbms.commit()
 
-item5 = lzdbItem(pattern = item1)
-item5['timefreq'] = [1,2,3]
+# pkey is refers
+item2 = dbms.newItem(refers=item1)
+item2['clusters'] = [1,2,3]
+item2['freqmap']=[4,5,6]
 
-dbms.insert(item5)
+# pkey is refers
+item3 = dbms.newItem(refers=item1)
+item3['clusters']=[2,3,4]
+item3['freqmap']=[5,6,7]
+
+dbms.commit()
+
+# pkey is refers1, refers2
+item5 = dbms.newItem(refers1=item1,refers2=item2)
+# item5.set(k=v) and item5[k]=v are identical
+item5.set(timefreq=[1,2,5])
+
+dbms.commit()
+
+# item5 is augmented after commit... alter table?
+item5['freqmap'] = [2,3,5]
 
 dbms.commit()
