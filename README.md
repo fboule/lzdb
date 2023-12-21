@@ -92,7 +92,7 @@ The dict-way:
 
 ```
 item2['clusters'] = [1,2,3]
-item2['freqmap']=[4,5,6]
+item2['freqmap'] = [4,5,6]
 ```
 
 The `set` method:
