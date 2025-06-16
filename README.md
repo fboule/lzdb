@@ -1,6 +1,6 @@
 # lzdb
 
-LZDB stands for Lazy Database. I am too lazy to create tables in a proper database from my Python scripts. Also this is not relevant per se. LZDB creates the tables with names by itself. Push the lzdbItem object to LZDB and added to the collections of objects with the same fields. If no collection match, a new one is created.
+LZDB stands for Lazy Database. I am too lazy to create tables in a proper database from my Python scripts. Also this is not relevant per se for what I need to do. LZDB creates the tables with names by itself. Push the lzdbItem object to LZDB and added to the collections of objects with the same fields. If no collection match, a new one is created.
 
 List of supported features:
  * Instanciating a new item. 
@@ -12,6 +12,7 @@ List of supported features:
 Initializing LZDB:
 
 ```
+import psycopg2 as pg
 from lzdb import *
 LZDB.traceon = True # Optional
 conn = pg.connect(database = 'test', host='localhost')
@@ -91,7 +92,7 @@ The dict-way:
 
 ```
 item2['clusters'] = [1,2,3]
-item2['freqmap']=[4,5,6]
+item2['freqmap'] = [4,5,6]
 ```
 
 The `set` method:

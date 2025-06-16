@@ -124,6 +124,9 @@ class LZDB(object):
                     obj[field] = items[field]
                 dbitem = self.__dbms.newItem(collection=self, **obj)
                 dbitem.id(items['id'])
+                for field in items:
+                    if field not in self.__ukeys:
+                        dbitem[field] = items[field]
 
         def read_fkeys(self, db, id):
             s = """SELECT 
@@ -261,4 +264,13 @@ class LZDB(object):
             if collection.getId() == collid:
                 return collection
         return None
+    
+    def getItems(self, **refs):
+        if len(refs) == 0:
+            return self.__items
+        items = []
+        for item in self.__items:
+            if refs.items() <= item.items():
+                items.append(item)
+        return items
 
