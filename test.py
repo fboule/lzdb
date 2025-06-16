@@ -31,12 +31,12 @@
 #  * A data field can be a FK too
 #  * Better support for datetime fields
 
-import psycopg2 as pg
+import psycopg as pg
 from lzdb import *
 
 LZDB.traceon = True
 
-conn = pg.connect(database = 'test', host='localhost')
+conn = pg.connect(dbname = 'test', host='127.0.0.1', user='postgres')
 dbms = LZDB(conn)
 
 # pkey is param, starttime, endtime
