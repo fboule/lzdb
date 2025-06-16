@@ -99,14 +99,13 @@ class LZDB(object):
         def read(self, db, id):
             self.__id = id
             self.read_fkeys(db, id)
-            db.execute("select * from %s" % id)
-            rows = db.fetchall()
+            rows = db.execute("select * from %s" % id)
             self.__fields = [desc[0] for desc in db.description]
             if LZDB.traceon:
                 if len(self.__fkeys) == 0:
-                    print('Found %i rows in %s(%s)' % (len(rows), id, ','.join(self.__ukeys)))
+                    print('Found %i rows in %s(%s)' % (rows.rowcount, id, ','.join(self.__ukeys)))
                 else:
-                    print('Found %i rows in %s(%s) with references:' % (len(rows), id, ','.join(self.__ukeys)))
+                    print('Found %i rows in %s(%s) with references:' % (rows.rowcount, id, ','.join(self.__ukeys)))
                     for name, collection in self.__fkeys.items():
                         print(f'  {name} to {collection.getId()}')
             for row in rows:
@@ -228,9 +227,8 @@ class LZDB(object):
             else:
                 s = s + f" on conflict({','.join(ukeys)}) do nothing"
             s = s + " returning id;"
-            self.__db.execute(s)
-            rows = self.__db.fetchall()
-            if len(rows) > 0 : dbitem.id(rows[0][0])
+            rows = self.__db.execute(s)
+            if rows.rowcount > 0 : dbitem.id(rows[0][0])
         self.__conn.commit()
 
     def newItem(self, collection=None, id=None, **refs):
