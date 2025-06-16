@@ -12,10 +12,10 @@ List of supported features:
 Initializing LZDB:
 
 ```
-import psycopg2 as pg
+import psycopg as pg
 from lzdb import *
 LZDB.traceon = True # Optional
-conn = pg.connect(database = 'test', host='localhost')
+conn = pg.connect(dbname = 'test', host='localhost')
 dbms = LZDB(conn)
 ```
 
