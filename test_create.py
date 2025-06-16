@@ -31,12 +31,12 @@
 #  * A data field can be a FK too
 #  * Better support for datetime fields
 
-import psycopg2 as pg
+import psycopg as pg
 from lzdb import *
 
 LZDB.traceon = True
 
-conn = pg.connect(database = 'fboule', host='localhost', user='fboule', password='fboule')
+conn = pg.connect(dbname = 'test', host='127.0.0.1', user='postgres')
 dbms = LZDB(conn)
 
 # pkey is param, starttime, endtime
@@ -51,7 +51,7 @@ item2['clusters'] = [1,2,3]
 item2['freqmap']=[4,5,6]
 
 # pkey is refers
-item3 = dbms.newItem(refers=item4)
+item3 = dbms.newItem(refers=item1)
 item3['clusters']=[2,3,4]
 item3['freqmap']=[5,6,7]
 
