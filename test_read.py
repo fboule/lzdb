@@ -19,14 +19,14 @@
 #
 ################################################################################
 
-import psycopg2 as pg
+import psycopg as pg
 from lzdb import *
 import pprint
 pp = pprint.PrettyPrinter()
 
 LZDB.traceon = True
 
-conn = pg.connect(database = 'fboule', host='localhost', user='fboule', password='fboule')
+conn = pg.connect(dbname = 'test', host='127.0.0.1', user='postgres')
 dbms = LZDB(conn)
 
 items = dbms.getItems(param='2004')
