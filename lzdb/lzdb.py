@@ -75,9 +75,11 @@ class LZDB(object):
         __fkeys = None
         __fields = None
         __dbms = None
+        __tname = ''
 
-        def __init__(self, dbms, ukeys=None, fkeys={}, dbitem=None):
+        def __init__(self, dbms, ukeys=None, fkeys={}, dbitem=None, tname=''):
             self.__dbms = dbms
+            self.__tname = tname
             if ukeys is not None:
                 self.__fkeys = fkeys
                 self.__fields = []
@@ -93,6 +95,12 @@ class LZDB(object):
         def getId(self):
             return self.__id
 
+        def getName(self):
+            return self.__tname
+
+        def setName(self, tname):
+            self.__tname = tname
+
         def getUniqueKeys(self):
             return self.__ukeys
 
@@ -102,10 +110,12 @@ class LZDB(object):
             rows = db.execute("select * from %s" % id)
             self.__fields = [desc[0] for desc in db.description]
             if LZDB.traceon:
+                tname = ""
+                if self.__tname != '': tname = f" as '{self.__tname}'"
                 if len(self.__fkeys) == 0:
-                    print('Found %i rows in %s(%s)' % (rows.rowcount, id, ','.join(self.__ukeys)))
+                    print('Found %i rows in %s(%s)%s' % (rows.rowcount, id, ','.join(self.__ukeys), tname))
                 else:
-                    print('Found %i rows in %s(%s) with references:' % (rows.rowcount, id, ','.join(self.__ukeys)))
+                    print('Found %i rows in %s(%s)%s with references:' % (rows.rowcount, id, ','.join(self.__ukeys), tname))
                     for name, collection in self.__fkeys.items():
                         print(f'  {name} to {collection.getId()}')
             for row in rows:
@@ -161,7 +171,7 @@ class LZDB(object):
             ukeys = ','.join(self.__ukeys)
             fields = sorted([x for x in self.__fields if x != 'id'])
             res = db.execute(
-                f"insert into lzdb(ukeys) values('{ukeys}') on conflict(ukeys) do update set ukeys = EXCLUDED.ukeys returning id")
+                f"insert into lzdb(ukeys, tname) values('{ukeys}','{self.__tname}') on conflict(ukeys) do update set ukeys = EXCLUDED.ukeys, tname = '{self.__tname}' returning id")
             self.__id= f"lzdb__{res.fetchone()[0]}"
 
             s = "create table if not exists %s(id serial primary key" % self.__id
@@ -188,20 +198,21 @@ class LZDB(object):
             "select exists(select 1 from information_schema.tables where table_schema='public' and table_name='lzdb')")
         if not db.fetchone()[0]: return
 
-        db.execute("select id, ukeys from lzdb")
+        db.execute("select id, ukeys, tname from lzdb")
         tables = db.fetchall()
         if LZDB.traceon: print('LZDB tables found:', len(tables))
         for table in tables:
             ukeys = None
             if len(table[1]) > 0: ukeys = table[1].split(',')
             id = f'lzdb__{table[0]}'
-            collection = LZDB.Collection(self, ukeys=ukeys)
+            tname = table[2]
+            collection = LZDB.Collection(self, ukeys=ukeys, tname=tname)
             collection.read_fkeys(db, id)
             self.__collections.append(collection)
             collection.read(db, id)
 
     def commit(self):
-        self.__db.execute('create table if not exists lzdb(id serial primary key, ukeys varchar, unique(ukeys))')
+        self.__db.execute('create table if not exists lzdb(id serial primary key, ukeys varchar, tname varchar, unique(ukeys))')
         for collection in self.__collections:
             collection.createTable(self.__db)
         for dbitem in self.__items:
