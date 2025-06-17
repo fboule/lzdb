@@ -40,7 +40,7 @@ class LZDB(object):
             self.__id = id
             for k, v in refs.items():
                 self[k] = v
-                if isinstance(v, LZDB.lzdbItem): self.__fkeys[k] = v.getCollection()
+                if isinstance(v, LZDB.lzdbItem): self.__fkeys[k] = v.collection()
             if collection is None:
                 self.__collection = dbms.fetchCollection(self.__ukeys, self.__fkeys)
             else:
@@ -54,19 +54,19 @@ class LZDB(object):
             for k, v in kwargs.items():
                 self[k] = v
 
-        def getForeignKeys(self):
+        def foreignKeys(self):
             return self.__fkeys
 
-        def getUniqueKeys(self):
+        def uniqueKeys(self):
             return self.__ukeys
 
-        def getUniqueDict(self):
+        def uniqueDict(self):
             v = {}
             for k in self.__ukeys:
                 v[k] = self[k]
             return v
 
-        def getCollection(self):
+        def collection(self):
             return self.__collection
 
     class Collection(object):
@@ -84,24 +84,23 @@ class LZDB(object):
                 self.__fkeys = fkeys
                 self.__fields = []
             if dbitem is not None:
-                ukeys = dbitem.getUniqueKeys()
-                self.__fkeys = dbitem.getForeignKeys()
+                ukeys = dbitem.uniqueKeys()
+                self.__fkeys = dbitem.foreignKeys()
             if ukeys is not None:
                 self.__ukeys = sorted(ukeys)
                 self.__fields.extend(ukeys)
             for field in self.__fkeys:
                 if field not in self.__fields: self.__fields.append(field)
 
-        def getId(self):
+        def id(self):
             return self.__id
 
-        def getName(self):
+        def name(self, tname = None):
+            if tname is not None:
+                self.__tname = tname
             return self.__tname
 
-        def setName(self, tname):
-            self.__tname = tname
-
-        def getUniqueKeys(self):
+        def uniqueKeys(self):
             return self.__ukeys
 
         def read(self, db, id):
@@ -117,7 +116,7 @@ class LZDB(object):
                 else:
                     print('Found %i rows in %s(%s)%s with references:' % (rows.rowcount, id, ','.join(self.__ukeys), tname))
                     for name, collection in self.__fkeys.items():
-                        print(f'  {name} to {collection.getId()}')
+                        print(f'  {name} to {collection.id()}')
             for row in rows:
                 pkitems = dict(zip(self.__fields, row))
                 items = {}
@@ -177,7 +176,7 @@ class LZDB(object):
             s = "create table if not exists %s(id serial primary key" % self.__id
             if len(self.__fkeys) > 0:
                 for k, collection in self.__fkeys.items():
-                    kk = '%s integer references %s' % (k, collection.getId())
+                    kk = '%s integer references %s' % (k, collection.id())
                     s = "%s, %s" % (s, kk)
             k = ', '.join([f'{x} varchar' for x in fields if x not in self.__fkeys])
             if k != '': s = f'{s}, {k}'
@@ -216,11 +215,11 @@ class LZDB(object):
         for collection in self.__collections:
             collection.createTable(self.__db)
         for dbitem in self.__items:
-            dbitem.getCollection().createNewFields(self.__db, dbitem)
+            dbitem.collection().createNewFields(self.__db, dbitem)
             fields = sorted(dbitem.keys())
-            ukeys = dbitem.getUniqueKeys()
+            ukeys = dbitem.uniqueKeys()
             datafields = sorted([x for x in fields if x not in ukeys])
-            s = "insert into %s(%s) values(" % (dbitem.getCollection().getId(), ','.join(fields))
+            s = "insert into %s(%s) values(" % (dbitem.collection().id(), ','.join(fields))
             items = []
             for field in fields:
                 if isinstance(dbitem[field], LZDB.lzdbItem):
@@ -246,7 +245,7 @@ class LZDB(object):
     def newItem(self, collection=None, id=None, **refs):
         dbitem = None
         for item in self.__items:
-            if refs == item.getUniqueDict():
+            if refs == item.uniqueDict():
                 dbitem = item
                 dbitem.set(**refs)
                 break
@@ -259,7 +258,7 @@ class LZDB(object):
     def fetchCollection(self, ukeys, fkeys):
         ukeys = sorted(ukeys)
         for collection in self.__collections:
-            if collection.getUniqueKeys() == ukeys:
+            if collection.uniqueKeys() == ukeys:
                 return collection
         collection = LZDB.Collection(self, ukeys=ukeys, fkeys=fkeys)
         self.__collections.append(collection)
@@ -267,17 +266,17 @@ class LZDB(object):
 
     def findItem(self, collection, v):
         for item in self.__items:
-            if item.id() == v and item.getCollection() == collection:
+            if item.id() == v and item.collection() == collection:
                 return item
         return None
 
     def findCollectionByName(self, collid):
         for collection in self.__collections:
-            if collection.getId() == collid:
+            if collection.id() == collid:
                 return collection
         return None
     
-    def getItems(self, **refs):
+    def items(self, **refs):
         if len(refs) == 0:
             return self.__items
         items = []
