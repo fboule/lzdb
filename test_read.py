@@ -29,5 +29,6 @@ LZDB.traceon = True
 conn = pg.connect(dbname = 'test', host='127.0.0.1', user='postgres')
 dbms = LZDB(conn)
 
+print("\nLooking up param='2004':")
 items = dbms.getItems(param='2004')
 pp.pprint(items)

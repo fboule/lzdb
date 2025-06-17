@@ -43,6 +43,8 @@ dbms = LZDB(conn)
 item1 = dbms.newItem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
 item4 = dbms.newItem(param='2004', starttime='04-jan-2000:00:00:00', endtime='05-jan-2000:00:00:00')
 
+item1.getCollection().setName("Event")
+
 dbms.commit()
 
 # pkey is refers
@@ -55,12 +57,16 @@ item3 = dbms.newItem(refers=item1)
 item3['clusters']=[2,3,4]
 item3['freqmap']=[5,6,7]
 
+item2.getCollection().setName("Data")
+
 dbms.commit()
 
 # pkey is refers1, refers2
 item5 = dbms.newItem(refers1=item1,refers2=item2)
 # item5.set(k=v) and item5[k]=v are identical
 item5.set(timefreq=[1,2,5])
+
+item5.getCollection().setName("Data2")
 
 dbms.commit()
 
