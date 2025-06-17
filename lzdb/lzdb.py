@@ -160,10 +160,9 @@ class LZDB(object):
         def createTable(self, db):
             ukeys = ','.join(self.__ukeys)
             fields = sorted([x for x in self.__fields if x != 'id'])
-            db.execute(
+            res = db.execute(
                 f"insert into lzdb(ukeys) values('{ukeys}') on conflict(ukeys) do update set ukeys = EXCLUDED.ukeys returning id")
-            self.__id = db.fetchone()[0]
-            self.__id= f"lzdb__{self.__id}"
+            self.__id= f"lzdb__{res.fetchone()[0]}"
 
             s = "create table if not exists %s(id serial primary key" % self.__id
             if len(self.__fkeys) > 0:
@@ -210,7 +209,7 @@ class LZDB(object):
             fields = sorted(dbitem.keys())
             ukeys = dbitem.getUniqueKeys()
             datafields = sorted([x for x in fields if x not in ukeys])
-            s = "begin; insert into %s(%s) values(" % (dbitem.getCollection().getId(), ','.join(fields))
+            s = "insert into %s(%s) values(" % (dbitem.getCollection().getId(), ','.join(fields))
             items = []
             for field in fields:
                 if isinstance(dbitem[field], LZDB.lzdbItem):
@@ -227,8 +226,10 @@ class LZDB(object):
             else:
                 s = s + f" on conflict({','.join(ukeys)}) do nothing"
             s = s + " returning id;"
-            rows = self.__db.execute(s)
-            if rows.rowcount > 0 : dbitem.id(rows[0][0])
+            self.__db.execute(s)
+            res = self.__db.fetchone()
+            if res is not None:
+                dbitem.id(res[0])
         self.__conn.commit()
 
     def newItem(self, collection=None, id=None, **refs):
