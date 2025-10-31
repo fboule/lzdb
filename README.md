@@ -3,7 +3,7 @@
 LZDB stands for Lazy Database. I am too lazy to create tables in a proper database from my Python scripts. Also this is not relevant per se for what I need to do. LZDB creates the tables with names by itself. Push the lzdbItem object to LZDB and added to the collections of objects with the same fields. If no collection match, a new one is created.
 
 List of supported features:
- * Instanciating a new item. 
+ * Instantiating a new item. 
  * Cross-references between items
  * Adding/updating fields 
  
@@ -28,7 +28,7 @@ Let's go for an example in the next section.
 
 ***Important note***: everything remains volatile until you explicitly run `dbms.commit()`. An `autocommit` may come in the future.
 
-## Instanciating a new item
+## Instantiating a new item
 
 ```
 item1 = dbms.newItem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
