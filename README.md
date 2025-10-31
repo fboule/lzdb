@@ -160,7 +160,7 @@ The LZDB class comes with a `register` method that will put in place a couple of
 It works the following way:
 
 ```
-import psycopg2 as pg
+import psycopg as pg
 from lzdb import *
 LZDB.traceon = True # Optional
 conn = pg.connect(database = 'test', host='localhost')
