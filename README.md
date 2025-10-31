@@ -6,6 +6,29 @@ List of supported features:
  * Instantiating a new item. 
  * Cross-references between items
  * Adding/updating fields 
+
+## Building the package
+
+The build is done using the standard Python tools, e.g. pypa/build:
+
+```
+pip install build
+```
+
+That will install the build tool, if not already done. Then:
+
+```
+rm -rf dist
+python3 -m build
+```
+
+Then it can be installed the usual way:
+
+```
+pip install dist/*.whl
+```
+
+Yeah, using wildcards. Told ya I'm lazy.
  
 ## Foreword
 
