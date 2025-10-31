@@ -152,3 +152,32 @@ The record will be ***updated*** as follows:
  * freqmap: [4,5,6]
  
 If the value of an existing field is changed, the record in the database will simply be updated.
+
+## For a little more laziness
+
+The LZDB class comes with a `register` method that will put in place a couple of functions to be used as shortcuts to the methods. 
+
+It works the following way:
+
+```
+import psycopg2 as pg
+from lzdb import *
+LZDB.traceon = True # Optional
+conn = pg.connect(database = 'test', host='localhost')
+dbms = LZDB(conn)
+
+dbms.register()
+
+item1 = lzitem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
+
+...
+```
+
+They all start with `lz` and map to the following methods:
+
+ * lzitem: newItem
+ * lzcget: fetchCollection
+ * lzfind: findItem
+ * lzcfind: findCollectionByName
+ * lzitems: items
+
