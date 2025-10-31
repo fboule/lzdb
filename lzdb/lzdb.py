@@ -21,7 +21,6 @@
 
 import datetime
 
-
 class LZDB(object):
     __db = None
     __collections = None
@@ -209,6 +208,19 @@ class LZDB(object):
             collection.read_fkeys(db, id)
             self.__collections.append(collection)
             collection.read(db, id)
+
+    def register(self):
+        import inspect
+        caller_globals = inspect.stack()[1].frame.f_globals
+        ptrs = {
+            'lzitem': 'newItem',
+            'lzcget': 'fetchCollection',
+            'lzfind': 'findItem',
+            'lzcfind': 'findCollectionByName',
+            'lzitems': 'items'
+        }
+        for k, v in ptrs.items():
+            caller_globals[k] = getattr(self, v)
 
     def commit(self):
         self.__db.execute('create table if not exists lzdb(id serial primary key, ukeys varchar, tname varchar, unique(ukeys))')
