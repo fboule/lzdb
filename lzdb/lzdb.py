@@ -153,7 +153,7 @@ class LZDB(object):
             items = db.fetchall()
             self.__fkeys = {}
             for field, collid in dict(items).items():
-                self.__fkeys[field] = self.__dbms.findCollectionByName(collid)
+                self.__fkeys[field] = self.__dbms.findCollectionById(collid)
 
         def createNewFields(self, db, dbitem):
             newFields = []
@@ -276,24 +276,38 @@ class LZDB(object):
         self.__collections.append(collection)
         return collection
 
+    def collections(self):
+        return self.__collections
+
     def findItem(self, collection, v):
         for item in self.__items:
             if item.id() == v and item.collection() == collection:
                 return item
         return None
 
-    def findCollectionByName(self, collid):
+    def findCollectionById(self, collid):
         for collection in self.__collections:
             if collection.id() == collid:
                 return collection
         return None
     
-    def items(self, **refs):
-        if len(refs) == 0:
+    def findCollectionByName(self, name):
+        for collection in self.__collections:
+            if collection.name() == name:
+                return collection
+        return None
+
+    def items(self, collection = None, **refs):
+        if len(refs) == 0 and collection is None:
             return self.__items
         items = []
-        for item in self.__items:
-            if refs.items() <= item.items():
-                items.append(item)
+        if collection is not None:
+            for item in self.__items:
+                if item.collection() == collection:
+                    items.append(item)
+        else:
+            for item in self.__items:
+                if refs.items() <= item.items():
+                    items.append(item)
         return items
 
