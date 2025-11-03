@@ -217,6 +217,7 @@ class LZDB(object):
             'lzcget': 'fetchCollection',
             'lzfind': 'findItem',
             'lzcfind': 'findCollectionByName',
+            'lzcnames': 'collectionsNames',
             'lzitems': 'items'
         }
         for k, v in ptrs.items():
@@ -278,6 +279,9 @@ class LZDB(object):
 
     def collections(self):
         return self.__collections
+
+    def collectionsNames(self):
+        return [ collection.name() for collection in self.__collections ]
 
     def findItem(self, collection, v):
         for item in self.__items:
