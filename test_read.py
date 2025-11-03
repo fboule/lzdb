@@ -32,3 +32,13 @@ dbms = LZDB(conn)
 print("\nLooking up param='2004':")
 items = dbms.items(param='2004')
 pp.pprint(items)
+
+print("\nLooking up collection 'time frequency':")
+collection = dbms.findCollectionByName('time frequency')
+items = dbms.items(collection)
+pp.pprint(items)
+
+print("\nLooking up collection 'time of event':")
+collection = dbms.findCollectionByName('time of event')
+items = dbms.items(collection)
+pp.pprint(items)
