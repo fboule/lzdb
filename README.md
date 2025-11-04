@@ -176,8 +176,7 @@ item1 = lzitem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2
 They all start with `lz` and map to the following methods:
 
  * lzitem: newItem
- * lzcget: fetchCollection
- * lzfind: findItem
- * lzcfind: findCollectionByName
+ * lzc: collections
+ * lzcnames: collectionNames
  * lzitems: items
 

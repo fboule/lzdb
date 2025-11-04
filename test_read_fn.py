@@ -39,6 +39,6 @@ pp.pprint(cnames)
 
 for cname in cnames:
     print("\nLooking up collection '%s':" % cname)
-    collection = lzcfind(cname)
+    collection = lzc(name = cname)
     items = lzitems(collection)
     pp.pprint(items)

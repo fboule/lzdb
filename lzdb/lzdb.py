@@ -41,7 +41,7 @@ class LZDB(object):
                 self[k] = v
                 if isinstance(v, LZDB.lzdbItem): self.__fkeys[k] = v.collection()
             if collection is None:
-                self.__collection = dbms.getCollection(self.__ukeys, self.__fkeys)
+                self.__collection = dbms.collections(self.__ukeys, self.__fkeys)
             else:
                 self.__collection = collection
 
@@ -121,7 +121,7 @@ class LZDB(object):
                 items = {}
                 for kk in self.__fields:
                     if kk in self.__fkeys:
-                        items[kk] = self.__dbms.findItem(self.__fkeys[kk], pkitems[kk])
+                        items[kk] = self.__dbms.items(collection = self.__fkeys[kk], id = pkitems[kk])
                     else:
                         try:
                             items[kk] = datetime.datetime.strptime(pkitems[kk], "%Y-%m-%d %H:%M:%S")
@@ -153,7 +153,7 @@ class LZDB(object):
             items = db.fetchall()
             self.__fkeys = {}
             for field, collid in dict(items).items():
-                self.__fkeys[field] = self.__dbms.findCollectionById(collid)
+                self.__fkeys[field] = self.__dbms.collections(id = collid)
 
         def createNewFields(self, db, dbitem):
             newFields = []
@@ -220,11 +220,9 @@ class LZDB(object):
         caller_globals = stack.frame.f_globals
         ptrs = {
             'lzitem': 'newItem',
-            'lzcfetch': 'getCollection',
-            'lzfind': 'findItem',
-            'lzcfind': 'findCollectionByName',
+            'lzitems': 'items',
+            'lzc': 'collections',
             'lzcnames': 'collectionsNames',
-            'lzitems': 'items'
         }
         for k, v in ptrs.items():
             caller_globals[k] = getattr(self, v)
@@ -274,7 +272,22 @@ class LZDB(object):
         dbitem.id(id)
         return dbitem
 
-    def getCollection(self, ukeys, fkeys):
+    def collectionsNames(self):
+        return [ collection.name() for collection in self.__collections ]
+
+    def collections(self, ukeys = None, fkeys = None, id = None, name = None):
+        if name is not None:
+            for collection in self.__collections:
+                if collection.name() == name:
+                    return collection
+            return None
+        if id is not None:
+            for collection in self.__collections:
+                if collection.id() == id:
+                    return collection
+            return None
+        if ukeys is None:
+            return self.__collections
         ukeys = sorted(ukeys)
         for collection in self.__collections:
             if collection.uniqueKeys() == ukeys:
@@ -283,35 +296,16 @@ class LZDB(object):
         self.__collections.append(collection)
         return collection
 
-    def collections(self):
-        return self.__collections
-
-    def collectionsNames(self):
-        return [ collection.name() for collection in self.__collections ]
-
-    def findItem(self, collection, v):
-        for item in self.__items:
-            if item.id() == v and item.collection() == collection:
-                return item
-        return None
-
-    def findCollectionById(self, collid):
-        for collection in self.__collections:
-            if collection.id() == collid:
-                return collection
-        return None
-    
-    def findCollectionByName(self, name):
-        for collection in self.__collections:
-            if collection.name() == name:
-                return collection
-        return None
-
     def items(self, collection = None, **refs):
         if len(refs) == 0 and collection is None:
             return self.__items
         items = []
-        if collection is not None:
+        if collection is not None and 'id' in refs:
+            for item in self.__items:
+                if item.id() == refs['id'] and item.collection() == collection:
+                    return item
+            return None
+        elif collection is not None:
             for item in self.__items:
                 if item.collection() == collection:
                     items.append(item)

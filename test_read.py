@@ -39,6 +39,6 @@ pp.pprint(cnames)
 
 for cname in cnames:
     print("\nLooking up collection '%s':" % cname)
-    collection = dbms.findCollectionByName(cname)
+    collection = dbms.collections(name = cname)
     items = dbms.items(collection)
     pp.pprint(items)
