@@ -41,7 +41,7 @@ class LZDB(object):
                 self[k] = v
                 if isinstance(v, LZDB.lzdbItem): self.__fkeys[k] = v.collection()
             if collection is None:
-                self.__collection = dbms.fetchCollection(self.__ukeys, self.__fkeys)
+                self.__collection = dbms.getCollection(self.__ukeys, self.__fkeys)
             else:
                 self.__collection = collection
 
@@ -186,6 +186,8 @@ class LZDB(object):
                 if field not in self.__fields: self.__fields.append(field)
 
     def __init__(self, conn):
+        import inspect
+
         self.__conn = conn
         self.__db = conn.cursor()
         self.__collections = []
@@ -209,12 +211,16 @@ class LZDB(object):
             self.__collections.append(collection)
             collection.read(db, id)
 
-    def register(self):
+        self.register(stack = inspect.stack()[1])
+
+    def register(self, stack = None):
         import inspect
-        caller_globals = inspect.stack()[1].frame.f_globals
+        if stack is None:
+            stack = inspect.stack()[1]
+        caller_globals = stack.frame.f_globals
         ptrs = {
             'lzitem': 'newItem',
-            'lzcget': 'fetchCollection',
+            'lzcfetch': 'getCollection',
             'lzfind': 'findItem',
             'lzcfind': 'findCollectionByName',
             'lzcnames': 'collectionsNames',
@@ -268,7 +274,7 @@ class LZDB(object):
         dbitem.id(id)
         return dbitem
 
-    def fetchCollection(self, ukeys, fkeys):
+    def getCollection(self, ukeys, fkeys):
         ukeys = sorted(ukeys)
         for collection in self.__collections:
             if collection.uniqueKeys() == ukeys:
