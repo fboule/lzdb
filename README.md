@@ -157,16 +157,14 @@ If the value of an existing field is changed, the record in the database will si
 
 The LZDB class comes with a `register` method that will put in place a couple of functions to be used as shortcuts to the methods. 
 
-It works the following way:
+It is implicitly called and works the following way:
 
 ```python
 import psycopg as pg
 from lzdb import *
 LZDB.traceon = True # Optional
 conn = pg.connect(database = 'test', host='localhost')
-dbms = LZDB(conn)
-
-dbms.register()
+dbms = LZDB(conn) # dbms.register() called here
 
 item1 = lzitem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
 
