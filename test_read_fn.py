@@ -30,15 +30,15 @@ conn = pg.connect(dbname = 'test', host='127.0.0.1', user='postgres')
 dbms = LZDB(conn)
 
 print("\nLooking up param='2004':")
-items = dbms.items(param='2004')
+items = lzitems(param='2004')
 pp.pprint(items)
 
 print("\nCollections names:")
-cnames = dbms.collectionsNames()
+cnames = lzcnames()
 pp.pprint(cnames)
 
 for cname in cnames:
     print("\nLooking up collection '%s':" % cname)
-    collection = dbms.collections(name = cname)
-    items = dbms.items(collection)
+    collection = lzc(name = cname)
+    items = lzitems(collection)
     pp.pprint(items)

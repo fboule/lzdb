@@ -3,19 +3,42 @@
 LZDB stands for Lazy Database. I am too lazy to create tables in a proper database from my Python scripts. Also this is not relevant per se for what I need to do. LZDB creates the tables with names by itself. Push the lzdbItem object to LZDB and added to the collections of objects with the same fields. If no collection match, a new one is created.
 
 List of supported features:
- * Instanciating a new item. 
+ * Instantiating a new item. 
  * Cross-references between items
  * Adding/updating fields 
+
+## Building the package
+
+The build is done using the standard Python tools, e.g. pypa/build:
+
+```
+pip install build
+```
+
+That will install the build tool, if not already done. Then:
+
+```
+rm -rf dist
+python3 -m build
+```
+
+Then it can be installed the usual way:
+
+```
+pip install dist/*.whl
+```
+
+Yeah, using wildcards. Told ya I'm lazy.
  
 ## Foreword
 
 Initializing LZDB:
 
-```
+```python
 import psycopg as pg
 from lzdb import *
 LZDB.traceon = True # Optional
-conn = pg.connect(dbname = 'test', host='localhost')
+conn = pg.connect(dbname = 'test', host = 'localhost')
 dbms = LZDB(conn)
 ```
 
@@ -28,15 +51,15 @@ Let's go for an example in the next section.
 
 ***Important note***: everything remains volatile until you explicitly run `dbms.commit()`. An `autocommit` may come in the future.
 
-## Instanciating a new item
+## Instantiating a new item
 
-```
+```python
 item1 = dbms.newItem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
 ```
 
 This will create the following table:
 
-```
+~~~~sql
 CREATE TABLE IF NOT EXISTS public.lzdb__1
 (
     id integer NOT NULL DEFAULT nextval('lzdb__1_id_seq'::regclass),
@@ -46,7 +69,7 @@ CREATE TABLE IF NOT EXISTS public.lzdb__1
     CONSTRAINT lzdb__1_pkey PRIMARY KEY (id),
     CONSTRAINT lzdb__1_endtime_param_starttime_key UNIQUE (endtime, param, starttime)
 )
-```
+~~~~
 
 In the lzdb table, the following record will be inserted:
  
@@ -59,13 +82,13 @@ Each subsequent item created with the same virtual primary key will end up in th
 
 Let's go with an example:
 
-```
+```python
 item2 = dbms.newItem(refers=item1)
 ```
 
 This will create a second table with `refers` as virtual primary key and declare the field as foreign key as follows:
 
-```
+~~~~sql
 CREATE TABLE IF NOT EXISTS public.lzdb__2
 (
     id integer NOT NULL DEFAULT nextval('lzdb__2_id_seq'::regclass),
@@ -77,7 +100,7 @@ CREATE TABLE IF NOT EXISTS public.lzdb__2
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 )
-```
+~~~~
 
 The inserted record will look like the following:
 
@@ -90,14 +113,14 @@ Now, let's attach some data to the records. There are two syntaxes possible.
 
 The dict-way:
 
-```
+```python
 item2['clusters'] = [1,2,3]
 item2['freqmap'] = [4,5,6]
 ```
 
 The `set` method:
 
-```
+```python
 item2.set(clusters=[1,2,3], freqmap=[4,5,6])
 ```
 
@@ -105,7 +128,7 @@ Since the table `lzdb__2` has already been created, it will be altered with the 
 
 The table will then have the following definition:
 
-```
+~~~~sql
 CREATE TABLE IF NOT EXISTS public.lzdb__2
 (
     id integer NOT NULL DEFAULT nextval('lzdb__2_id_seq'::regclass),
@@ -119,7 +142,7 @@ CREATE TABLE IF NOT EXISTS public.lzdb__2
         ON UPDATE NO ACTION
         ON DELETE NO ACTION
 )
-```
+~~~~
 
 The record will be ***updated*** as follows:
 
@@ -129,3 +152,27 @@ The record will be ***updated*** as follows:
  * freqmap: [4,5,6]
  
 If the value of an existing field is changed, the record in the database will simply be updated.
+
+## For a little more laziness
+
+The LZDB class comes with a `register` method that will put in place a couple of functions to be used as shortcuts to the methods. 
+
+It is implicitly called and works the following way:
+
+```python
+import psycopg as pg
+from lzdb import *
+LZDB.traceon = True # Optional
+conn = pg.connect(dbname = 'test', host = 'localhost')
+dbms = LZDB(conn) # dbms.register() called here
+
+item1 = lzitem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
+```
+
+They all start with `lz` and map to the following methods:
+
+ * lzitem: newItem
+ * lzc: collections
+ * lzcnames: collectionNames
+ * lzitems: items
+
