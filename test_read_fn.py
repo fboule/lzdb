@@ -28,8 +28,17 @@ LZDB.traceon = True
 
 conn = pg.connect(dbname = 'test', host='127.0.0.1', user='postgres')
 dbms = LZDB(conn)
-dbms.register()
 
 print("\nLooking up param='2004':")
 items = lzitems(param='2004')
 pp.pprint(items)
+
+print("\nCollections names:")
+cnames = lzcnames()
+pp.pprint(cnames)
+
+for cname in cnames:
+    print("\nLooking up collection '%s':" % cname)
+    collection = lzcfind(cname)
+    items = lzitems(collection)
+    pp.pprint(items)
