@@ -38,7 +38,7 @@ Initializing LZDB:
 import psycopg as pg
 from lzdb import *
 LZDB.traceon = True # Optional
-conn = pg.connect(dbname = 'test', host='localhost')
+conn = pg.connect(dbname = 'test', host = 'localhost')
 dbms = LZDB(conn)
 ```
 
@@ -163,7 +163,7 @@ It is implicitly called and works the following way:
 import psycopg as pg
 from lzdb import *
 LZDB.traceon = True # Optional
-conn = pg.connect(database = 'test', host='localhost')
+conn = pg.connect(dbname = 'test', host = 'localhost')
 dbms = LZDB(conn) # dbms.register() called here
 
 item1 = lzitem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
