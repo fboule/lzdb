@@ -167,8 +167,6 @@ conn = pg.connect(dbname = 'test', host = 'localhost')
 dbms = LZDB(conn) # dbms.register() called here
 
 item1 = lzitem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
-
-...
 ```
 
 They all start with `lz` and map to the following methods:
