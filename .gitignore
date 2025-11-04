@@ -1,5 +1,5 @@
 __pycache__
 .idea
 dist/
-lzdb.egg-info/
+*.egg-info/
 

@@ -1,5 +1,5 @@
 [project]
-name = "lzdb"
+name = "lzdb2"
 version = "1.2.0"
 authors = [
   { name="Fabien Bouleau", email="fabien.bouleau@gmail.com" },
@@ -12,7 +12,7 @@ classifiers = [
     "Programming Language :: Python :: 3",
     "Operating System :: OS Independent",
 ]
-keywords = ["lzdb", "gplv3", "python"]
+keywords = ["lzdb2", "gplv3", "python"]
 
 [project.urls]
 Homepage = "https://github.com/fboule/lzdb"
