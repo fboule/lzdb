@@ -176,10 +176,10 @@ They all start with `lz` and map to the following methods:
  * lzcnames: collectionNames
  * lzitems: items
 
-Also, to read parquet data, the lzloader class has been introduced:
+Also, to read parquet data, the lzdict class has been introduced:
 
 ```python
-dd = lzloader()
+dd = lzdict()
 mydata = dd['PQTFILE']
 ```
 
@@ -190,7 +190,7 @@ This will search in the data/ subfolder for a file matching the pattern `*PQTFIL
 dict_keys(['AMT00104'])
 ```
 
-Also note that the `dd` variable is already defined as `dd = lzloader()` and the `pp` variable points to the pretty print function, i.e. `pprint.PrettyPrinter().pprint`:
+Also note that the `dd` variable is already defined as `dd = lzdict()` and the `pp` variable points to the pretty print function, i.e. `pprint.PrettyPrinter().pprint`:
 
 ```python
 >>> items = dbms.items(param='2004')

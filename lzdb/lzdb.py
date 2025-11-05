@@ -229,7 +229,7 @@ class LZDB(object):
         }
         for k, v in ptrs.items():
             caller_globals[k] = getattr(self, v)
-        caller_globals['dd'] = lzloader()
+        caller_globals['dd'] = lzdict()
         caller_globals['pp'] = pprint.PrettyPrinter().pprint
 
     def commit(self):
@@ -320,7 +320,7 @@ class LZDB(object):
                     items.append(item)
         return items
 
-class lzloader(dict):
+class lzdict(dict):
     __loader = None
 
     class parquet(object):
@@ -336,7 +336,7 @@ class lzloader(dict):
     def __init__(self, loader = None):
         self.__loader = loader
         if loader is None:
-            self.__loader = lzloader.parquet()
+            self.__loader = lzdict.parquet()
 
     def __getitem__(self, key):
         if not super().__contains__(key):
