@@ -17,7 +17,9 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 keywords = ["lzdb2", "gplv3", "python"]
-dependencies = []
+dependencies = [ 
+    "pandas>=2.0" 
+]
 
 [project.urls]
 Homepage = "https://github.com/fboule/lzdb"

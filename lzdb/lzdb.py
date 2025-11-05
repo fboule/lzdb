@@ -20,6 +20,9 @@
 ################################################################################
 
 import datetime
+import glob
+import pandas as pd
+import pprint
 
 class LZDB(object):
     __db = None
@@ -226,6 +229,8 @@ class LZDB(object):
         }
         for k, v in ptrs.items():
             caller_globals[k] = getattr(self, v)
+        caller_globals['dd'] = lzloader()
+        caller_globals['pp'] = pprint.PrettyPrinter().pprint
 
     def commit(self):
         self.__db.execute('create table if not exists lzdb(id serial primary key, ukeys varchar, tname varchar, unique(ukeys))')
@@ -314,4 +319,16 @@ class LZDB(object):
                 if refs.items() <= item.items():
                     items.append(item)
         return items
+
+class lzloader(dict):
+    def __getitem__(self, key):
+        if not super().__contains__(key):
+            filelist = glob.glob("data/*%s*" % key)
+            if len(filelist) != 1:
+                return None
+            filepath = filelist[0]
+            filename = filepath.split('_')[0].split('/')[1]
+            print("Reading %s" % filename)
+            self[filename] = pd.read_parquet(filepath)
+        return super().__getitem__(key)
 

@@ -1,1 +1,1 @@
-from lzdb.lzdb import LZDB
+from lzdb.lzdb import LZDB, lzloader
