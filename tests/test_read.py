@@ -21,8 +21,6 @@
 
 import psycopg as pg
 from lzdb import *
-import pprint
-pp = pprint.PrettyPrinter()
 
 LZDB.traceon = True
 
@@ -31,14 +29,14 @@ dbms = LZDB(conn)
 
 print("\nLooking up param='2004':")
 items = dbms.items(param='2004')
-pp.pprint(items)
+pp(items)
 
 print("\nCollections names:")
 cnames = dbms.collectionsNames()
-pp.pprint(cnames)
+pp(cnames)
 
 for cname in cnames:
     print("\nLooking up collection '%s':" % cname)
     collection = dbms.collections(name = cname)
     items = dbms.items(collection)
-    pp.pprint(items)
+    pp(items)
