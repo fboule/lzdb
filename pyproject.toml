@@ -1,6 +1,10 @@
+[build-system]
+requires = ["setuptools>=61.0"]
+build-backend = "setuptools.build_meta"
+
 [project]
 name = "lzdb2"
-version = "1.2.0"
+version = "1.3.0.dev1"
 authors = [
   { name="Fabien Bouleau", email="fabien.bouleau@gmail.com" },
 ]
@@ -13,6 +17,7 @@ classifiers = [
     "Operating System :: OS Independent",
 ]
 keywords = ["lzdb2", "gplv3", "python"]
+dependencies = []
 
 [project.urls]
 Homepage = "https://github.com/fboule/lzdb"
