@@ -187,7 +187,7 @@ This will search in the data/ subfolder for a file matching the pattern `*PQTFIL
 
 ```python
 >>> dd.keys()
-dict_keys(['AMT00104'])
+dict_keys(['PQTFILE'])
 ```
 
 Also note that the `dd` variable is already defined as `dd = lzdict()` and the `pp` variable points to the pretty print function, i.e. `pprint.PrettyPrinter().pprint`:
