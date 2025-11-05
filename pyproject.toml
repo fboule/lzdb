@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "lzdb2"
-version = "1.3.0.dev1"
+version = "1.3.dev1"
 authors = [
   { name="Fabien Bouleau", email="fabien.bouleau@gmail.com" },
 ]
