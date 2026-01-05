@@ -18,7 +18,10 @@ classifiers = [
 ]
 keywords = ["lzdb2", "gplv3", "python"]
 dependencies = [ 
-    "pandas>=2.0" 
+    "pandas>=2.0",
+    "matplotlib",
+    "numpy",
+    "psycopg"
 ]
 
 [project.urls]
