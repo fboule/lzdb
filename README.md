@@ -162,9 +162,7 @@ It is implicitly called and works the following way:
 ```python
 import psycopg as pg
 from lzdb import *
-LZDB.traceon = True # Optional
-conn = pg.connect(dbname = 'test', host = 'localhost')
-dbms = LZDB(conn) # dbms.register() called here
+dbms = LZDB(pg.connect(dbname = 'test', host = 'localhost'), traceon = True) # dbms.register() called here
 
 item1 = lzitem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
 ```
