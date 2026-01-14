@@ -44,8 +44,7 @@ Initializing LZDB:
 import psycopg as pg
 from lzdb import *
 LZDB.traceon = True # Optional
-conn = pg.connect(dbname = 'test', host = 'localhost')
-dbms = LZDB(conn)
+dbms = LZDB(pg.connect(dbname = 'test', host = 'localhost'), traceon = True)
 ```
 
 The created tables will be sequentially numbered with the prefix `lzdb__`. The `lzdb` table contains the inventory of all the tables with 
