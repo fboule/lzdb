@@ -188,13 +188,14 @@ class LZDB(object):
             for field in self.__ukeys + list(self.__fkeys.keys()):
                 if field not in self.__fields: self.__fields.append(field)
 
-    def __init__(self, conn):
+    def __init__(self, conn, traceon = False):
         import inspect
 
         self.__conn = conn
         self.__db = conn.cursor()
         self.__collections = []
         self.__items = []
+        LZDB.traceon = traceon
 
         db = conn.cursor()
         db.execute(
