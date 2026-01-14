@@ -28,6 +28,12 @@ Then it can be installed the usual way:
 pip install dist/*.whl
 ```
 
+Consequent updates can be performed with:
+
+```
+pip install dist/*.whl --force-reinstall --no-deps
+```
+
 Yeah, using wildcards. Told ya I'm lazy.
  
 ## Foreword
