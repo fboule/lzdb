@@ -1,6 +1,6 @@
 # lzdb
 
-LZDB stands for Lazy Database. The database schema is being reworked on-the-fly as data is being committed. 
+LZDB stands for Lazy Database. The database schema is being reworked on-the-fly as data is being committed. The term lazy is used on one hand because the database schema is being implemented only as required and not before injecting data, and, on the other hand, out of laziness, because it doesn't need to be designed upfront.
 
 List of supported features:
  * Instantiating a new item 
