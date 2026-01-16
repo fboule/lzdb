@@ -1,11 +1,11 @@
 # lzdb
 
-LZDB stands for Lazy Database. I am too lazy to create tables in a proper database from my Python scripts. Also this is not relevant per se for what I need to do. LZDB creates the tables with names by itself. Push the lzdbItem object to LZDB and added to the collections of objects with the same fields. If no collection match, a new one is created.
+LZDB stands for Lazy Database. The database schema is being reworked on-the-fly as data is being committed. 
 
 List of supported features:
- * Instantiating a new item. 
+ * Instantiating a new item 
  * Cross-references between items
- * Adding/updating fields 
+ * Adding/updating fields
 
 ## Building the package
 
