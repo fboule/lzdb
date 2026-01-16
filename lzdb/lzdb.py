@@ -20,6 +20,9 @@
 ################################################################################
 
 import datetime
+import glob
+import pandas as pd
+import pprint
 
 class LZDB(object):
     __db = None
@@ -185,13 +188,14 @@ class LZDB(object):
             for field in self.__ukeys + list(self.__fkeys.keys()):
                 if field not in self.__fields: self.__fields.append(field)
 
-    def __init__(self, conn):
+    def __init__(self, conn, traceon = False):
         import inspect
 
         self.__conn = conn
         self.__db = conn.cursor()
         self.__collections = []
         self.__items = []
+        LZDB.traceon = traceon
 
         db = conn.cursor()
         db.execute(
@@ -226,6 +230,8 @@ class LZDB(object):
         }
         for k, v in ptrs.items():
             caller_globals[k] = getattr(self, v)
+        caller_globals['dd'] = lzdict()
+        caller_globals['pp'] = pprint.PrettyPrinter().pprint
 
     def commit(self):
         self.__db.execute('create table if not exists lzdb(id serial primary key, ukeys varchar, tname varchar, unique(ukeys))')
@@ -314,4 +320,28 @@ class LZDB(object):
                 if refs.items() <= item.items():
                     items.append(item)
         return items
+
+class lzdict(dict):
+    __loader = None
+
+    class parquet(object):
+        def get(self, name, folder = "data"):
+            filelist = glob.glob("%s/*%s*" % (folder, name))
+            if len(filelist) != 1:
+                return None
+            filepath = filelist[0]
+            filename = filepath.split('_')[0].split('/')[1]
+            if LZDB.traceon:
+                print("Parquet::Get %s" % filename)
+            return pd.read_parquet(filepath)
+
+    def __init__(self, loader = None):
+        self.__loader = loader
+        if loader is None:
+            self.__loader = lzdict.parquet()
+
+    def __getitem__(self, key):
+        if not super().__contains__(key):
+            self[key] = self.__loader.get(key)
+        return super().__getitem__(key)
 

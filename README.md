@@ -28,6 +28,12 @@ Then it can be installed the usual way:
 pip install dist/*.whl
 ```
 
+Consequent updates can be performed with:
+
+```
+pip install dist/*.whl --force-reinstall --no-deps
+```
+
 Yeah, using wildcards. Told ya I'm lazy.
  
 ## Foreword
@@ -38,8 +44,7 @@ Initializing LZDB:
 import psycopg as pg
 from lzdb import *
 LZDB.traceon = True # Optional
-conn = pg.connect(dbname = 'test', host = 'localhost')
-dbms = LZDB(conn)
+dbms = LZDB(pg.connect(dbname = 'test', host = 'localhost'), traceon = True)
 ```
 
 The created tables will be sequentially numbered with the prefix `lzdb__`. The `lzdb` table contains the inventory of all the tables with 
@@ -162,10 +167,7 @@ It is implicitly called and works the following way:
 ```python
 import psycopg as pg
 from lzdb import *
-LZDB.traceon = True # Optional
-conn = pg.connect(dbname = 'test', host = 'localhost')
-dbms = LZDB(conn) # dbms.register() called here
-
+dbms = LZDB(pg.connect(dbname = 'test', host = 'localhost'), traceon = True)
 item1 = lzitem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
 ```
 
@@ -176,3 +178,31 @@ They all start with `lz` and map to the following methods:
  * lzcnames: collectionNames
  * lzitems: items
 
+Also, to read parquet data, the lzdict class has been introduced:
+
+```python
+dd = lzdict()
+mydata = dd['PQTFILE']
+```
+
+This will search in the data/ subfolder for a file matching the pattern `*PQTFILE*`, load it and keep it in the direct, and finally return the element.
+
+```python
+>>> dd.keys()
+dict_keys(['PQTFILE'])
+```
+
+Also note that the `dd` variable is already defined as `dd = lzdict()` and the `pp` variable points to the pretty print function, i.e. `pprint.PrettyPrinter().pprint`:
+
+```python
+>>> items = dbms.items(param='2004')
+>>> pp(items)
+[{'endtime': '04-jan-2000:00:00:00',
+  'id': 1,
+  'param': '2004',
+  'starttime': '03-jan-2000:00:00:00'},
+ {'endtime': '05-jan-2000:00:00:00',
+  'id': 2,
+  'param': '2004',
+  'starttime': '04-jan-2000:00:00:00'}]
+```
