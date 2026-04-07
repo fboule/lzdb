@@ -1,14 +1,6 @@
 {
   "name": "Python Dev Container",
-  "image": "mcr.microsoft.com/devcontainers/python:3.12",
-  "postCreateCommand": "pip install -r requirements.txt",
-  "customizations": {
-    "vscode": {
-      "extensions": [
-        "ms-python.python",
-        "ms-python.vscode-pylance"
-      ]
-    }
-  },
-  "remoteUser": "vscode"
+  "image": "internalrepo.secu.lu/ciss.devops-docker/baseimage/ubi-python:10.1-py3.12-v1",
+  "postCreateCommand": "bash -lc 'source .devcontainer/devcontainer.env; python_init; pip install .'",
+  "remoteUser": "root"
 }
