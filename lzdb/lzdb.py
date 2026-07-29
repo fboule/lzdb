@@ -23,6 +23,9 @@ import datetime
 import glob
 import pandas as pd
 import pprint
+import getpass
+
+ACCOUNT_NAME = getpass.getuser()
 
 class LZDB(object):
     __db = None
@@ -30,15 +33,20 @@ class LZDB(object):
     __items = None
     traceon = False
 
+    REL_DIRECTED = 0
+    REL_UNDIRECTED = 1
+
     class lzdbItem(dict):
         __ukeys = None
         __fkeys = None
         __collection = None
         __id = None
+        __links = None
 
         def __init__(self, dbms, id=None, collection=None, **refs):
             self.__ukeys = sorted(refs.keys())
             self.__fkeys = {}
+            self.__links = []
             self.__id = id
             for k, v in refs.items():
                 self[k] = v
@@ -70,6 +78,25 @@ class LZDB(object):
 
         def collection(self):
             return self.__collection
+
+        def link(self, items, reltype=LZDB.REL_DIRECTED):
+
+            if not isinstance(items, list):
+                items = [items]
+
+            for item in items:
+
+                self.__links.append(
+                    {
+                        'item': item,
+                        'reltype': reltype
+                    }
+                )
+
+            return self
+
+        def links(self):
+            return self.__links
 
     class Collection(object):
         __id = None
@@ -234,36 +261,162 @@ class LZDB(object):
         caller_globals['pp'] = pprint.PrettyPrinter().pprint
 
     def commit(self):
-        self.__db.execute('create table if not exists lzdb(id serial primary key, ukeys varchar, tname varchar, unique(ukeys))')
+        self.__createSystemTables()
+        self.__createCollections()
+        self.__saveItems()
+        self.__saveLinks()
+
+        self.__conn.commit()
+
+    def __createSystemTables(self):
+        self.__db.execute("""
+            create table if not exists lzdb(
+                id serial primary key,
+                ukeys varchar,
+                tname varchar,
+                unique(ukeys)
+            )
+        """)
+
+        self.__db.execute("""
+            create table if not exists lzdb_links(
+                src_collection integer not null,
+                src_id integer not null,
+
+                dst_collection integer not null,
+                dst_id integer not null,
+
+                reltype smallint not null default 0,
+
+                unique(
+                    src_collection,
+                    src_id,
+                    dst_collection,
+                    dst_id,
+                    reltype
+                )
+            )
+        """)
+
+    def __createCollections(self):
         for collection in self.__collections:
             collection.createTable(self.__db)
+
+    def __saveItem(self, dbitem):
+        dbitem.collection().createNewFields(
+            self.__db,
+            dbitem
+        )
+
+        fields = sorted(dbitem.keys())
+        ukeys = dbitem.uniqueKeys()
+
+        datafields = [
+            x for x in fields
+            if x not in ukeys
+        ]
+
+        values = []
+
+        for field in fields:
+
+            value = dbitem[field]
+
+            if isinstance(value, LZDB.lzdbItem):
+                value = value.id()
+
+            values.append(value)
+
+        sql = (
+            f"insert into {dbitem.collection().id()}"
+            f"({','.join(fields)}) values("
+            + ", ".join([f"'{v}'" for v in values])
+            + ")"
+        )
+
+        if len(datafields) > 0 and len(ukeys) > 0:
+
+            updates = [
+                f"{k}=EXCLUDED.{k}"
+                for k in datafields
+            ]
+
+            sql += (
+                f" on conflict({','.join(ukeys)}) "
+                f"do update set {','.join(updates)}"
+            )
+
+        else:
+
+            sql += (
+                f" on conflict({','.join(ukeys)}) "
+                f"do nothing"
+            )
+
+        sql += " returning id"
+
+        self.__db.execute(sql)
+
+        res = self.__db.fetchone()
+
+        if res is not None:
+            dbitem.id(res[0])
+
+    def __saveItems(self):
         for dbitem in self.__items:
-            dbitem.collection().createNewFields(self.__db, dbitem)
-            fields = sorted(dbitem.keys())
-            ukeys = dbitem.uniqueKeys()
-            datafields = sorted([x for x in fields if x not in ukeys])
-            s = "insert into %s(%s) values(" % (dbitem.collection().id(), ','.join(fields))
-            items = []
-            for field in fields:
-                if isinstance(dbitem[field], LZDB.lzdbItem):
-                    items.append(str(dbitem[field].id()))
-                else:
-                    items.append((dbitem[field]))
-            s = s + ', '.join([f"'{x}'" for x in items]) + ")"
-            if len(datafields) > 0 and len(ukeys) > 0:
-                s = s + " on conflict(%s) do update set " % ','.join(ukeys)
-                kk = []
-                for k in datafields:
-                    kk.append("%s = EXCLUDED.%s" % (k, k))
-                s = s + ', '.join(kk)
-            else:
-                s = s + f" on conflict({','.join(ukeys)}) do nothing"
-            s = s + " returning id;"
-            self.__db.execute(s)
-            res = self.__db.fetchone()
-            if res is not None:
-                dbitem.id(res[0])
-        self.__conn.commit()
+            self.__saveItem(dbitem)
+
+    def __insertLink(self, src, dst, reltype):
+        self.__db.execute(
+            """
+            insert into lzdb_links(
+                src_collection,
+                src_id,
+                dst_collection,
+                dst_id,
+                reltype
+            )
+            values(
+                %s,%s,%s,%s,%s
+            )
+            on conflict do nothing
+            """,
+            (
+                src.collection().id().split('__')[1],
+                src.id(),
+                dst.collection().id().split('__')[1],
+                dst.id(),
+                reltype
+            )
+        )
+
+    def __saveLinks(self):
+        for dbitem in self.__items:
+
+            for link in dbitem.links():
+
+                target = link['item']
+                reltype = link['reltype']
+
+                if dbitem.id() is None:
+                    continue
+
+                if target.id() is None:
+                    continue
+
+                self.__insertLink(
+                    dbitem,
+                    target,
+                    reltype
+                )
+
+                if reltype == LZDB.REL_UNDIRECTED:
+
+                    self.__insertLink(
+                        target,
+                        dbitem,
+                        reltype
+                    )
 
     def newItem(self, collection=None, id=None, **refs):
         dbitem = None
@@ -320,6 +473,49 @@ class LZDB(object):
                 if refs.items() <= item.items():
                     items.append(item)
         return items
+
+    def linkedItems(self, item, reltype=None):
+        sql = """
+            select
+                dst_table,
+                dst_id
+            from
+                lzdb_links
+            where
+                src_table=%s
+            and
+                src_id=%s
+        """
+
+        params = [
+            item.collection().id(),
+            item.id()
+        ]
+
+        if reltype is not None:
+            sql += " and reltype=%s"
+            params.append(reltype)
+
+        self.__db.execute(sql, params)
+
+        result = []
+
+        for table_name, obj_id in self.__db.fetchall():
+
+            coll = self.collections(id=table_name)
+
+            if coll is None:
+                continue
+
+            obj = self.items(
+                collection=coll,
+                id=obj_id
+            )
+
+            if obj is not None:
+                result.append(obj)
+
+        return result
 
 class lzdict(dict):
     __loader = None
