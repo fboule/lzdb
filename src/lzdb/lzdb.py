@@ -27,14 +27,14 @@ import getpass
 
 ACCOUNT_NAME = getpass.getuser()
 
+REL_DIRECTED = 0
+REL_UNDIRECTED = 1
+
 class LZDB(object):
     __db = None
     __collections = None
     __items = None
     traceon = False
-
-    REL_DIRECTED = 0
-    REL_UNDIRECTED = 1
 
     class lzdbItem(dict):
         __ukeys = None
@@ -79,7 +79,7 @@ class LZDB(object):
         def collection(self):
             return self.__collection
 
-        def link(self, items, reltype=LZDB.REL_DIRECTED):
+        def link(self, items, reltype=REL_DIRECTED):
 
             if not isinstance(items, list):
                 items = [items]

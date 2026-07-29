@@ -36,7 +36,7 @@ from lzdb import *
 
 LZDB.traceon = True
 
-conn = pg.connect(dbname = 'test', host='127.0.0.1', user=ACCOUNT_NAME)
+conn = pg.connect(dbname = 'test', host='127.0.0.1', user='postgres')
 dbms = LZDB(conn)
 
 # pkey is param, starttime, endtime
