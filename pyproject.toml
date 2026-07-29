@@ -1,5 +1,5 @@
 [build-system]
-requires = ["setuptools>=61.0"]
+requires = ["setuptools>=61.0", "wheel"]
 build-backend = "setuptools.build_meta"
 
 [project]
@@ -27,3 +27,18 @@ dependencies = [
 [project.urls]
 Homepage = "https://github.com/fboule/lzdb"
 Issues = "https://github.com/fboule/lzdb/issues"
+
+# -------------------------------
+# Modern src/ layout configuration
+# -------------------------------
+[tool.setuptools]
+package-dir = {"" = "src"}
+
+[tool.setuptools.packages.find]
+where = ["src"]
+
+# -------------------------------
+# Pytest configuration
+# -------------------------------
+[tool.pytest.ini_options]
+pythonpath = ["src"]
