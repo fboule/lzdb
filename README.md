@@ -375,9 +375,9 @@ Example:
 
 ---
 
-## Lazy Data Manifesto
+## Why Lazy Data Modeling?
 
-Read the full manifesto here:
+For the conceptual foundation behind lzdb, reqd the full manifesto:
 
 **[MANIFESTO.md](MANIFESTO.md)**
 
