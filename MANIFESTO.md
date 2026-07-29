@@ -1,85 +1,197 @@
 # Lazy Data Manifesto
-*A philosophy for exploratory, schema-emergent data work*
+*A declaration for schema-emergent data systems*
 
-## Introduction: Why Lazy Data Must Exist
+## 1. Introduction
 
-The contemporary research environment is dominated by systems that demand structure before understanding. Databases insist on schemas, migrations, and predefined relationships long before a researcher has any meaningful grasp of the domain. This requirement is not a neutral technical constraint — it is a barrier to discovery. It forces premature decisions, distorts emerging insights, and imposes an epistemic rigidity fundamentally at odds with exploratory work.
+Modern databases assume that structure is known in advance.
+They require schemas, migrations, and predefined relationships before any meaningful data exists.
+This assumption is convenient for mature domains — but destructive for exploratory work.
 
-Lazy Data Modeling exists because researchers deserve tools that respect uncertainty. They deserve systems that allow them to collect, store, and manipulate data before they know what that data means. They deserve workflows where curiosity is not punished by infrastructure. Lazy Data Modeling is built on the conviction that exploration is a legitimate state of knowledge, and that tools should honor this state rather than constrain it.
+Research, prototyping, and early-stage discovery do not begin with certainty.
+They begin with **questions**, **partial understanding**, and **messy data**.
 
-## The Problem: Premature Structure as an Obstacle to Insight
+Yet traditional systems punish this natural uncertainty.
+They force premature decisions, embed early misconceptions into rigid schemas, and interrupt discovery with migrations.
 
-Traditional data systems assume that structure is known in advance. They require schemas, constraints, and relationships to be declared upfront. This assumption may be reasonable for mature domains — but it is disastrous for research, prototyping, and early-stage discovery.
+**Lazy Data Modeling** exists to challenge this paradigm.
 
-Premature structure creates several forms of friction:
+It asserts that:
 
-- It forces researchers to guess the schema before they understand the phenomenon.
-- It introduces migrations that interrupt the research flow.
-- It embeds early misconceptions into the data model, making them harder to correct later.
-- It encourages rigid thinking by rewarding certainty over curiosity.
+- exploration is a legitimate state of knowledge
+- structure should follow discovery
+- tools must adapt to the researcher, not the other way around
 
-This friction is not incidental — it is a direct consequence of schema-first design. Lazy Data Modeling rejects this paradigm entirely. It argues that schema emergence is not a workaround but a methodological necessity for exploratory work.
+lzdb is the reference implementation of this philosophy.
 
-## The Vision: A Datastore That Adapts to Discovery
+---
 
-Lazy Data Modeling proposes a simple but radical idea:  
-**Let the data arrive first. Let the structure emerge later.**
+## 2. The Problem: Premature Structure
 
-To demonstrate this philosophy, we introduce **lzdb**, a lightweight, file-based datastore designed for exploratory research. lzdb behaves like a persistent Python dictionary, storing arbitrary objects without requiring any upfront schema. As data accumulates, patterns appear naturally. Relationships can be inferred, not declared. Structure becomes a reflection of understanding, not a prerequisite for it.
+Schema-first design creates friction at every stage of exploratory work:
 
-lzdb is intentionally minimal. It does not compete with relational databases or NoSQL systems. It exists to prove a point: that a datastore can support lazy data without sacrificing usability, persistence, or reliability.
+- You must guess the schema before understanding the phenomenon.
+- You must perform migrations every time your understanding evolves.
+- You must encode early misconceptions into the data model.
+- You must treat uncertainty as an error instead of a natural part of discovery.
 
-## The Ethical Argument: Freedom to Explore
+This friction is not incidental — it is structural.
+It is baked into the design of traditional databases.
 
-Lazy Data Modeling is not just a technical approach — it is an epistemic stance. It asserts that researchers should be free from tools that impose premature structure. It argues that exploration is a valid intellectual activity, and that uncertainty is not a defect but a natural part of discovery.
+Lazy Data Modeling rejects this constraint.
 
-Premature structure is a form of coercion. It forces the researcher to commit to assumptions they may not yet believe. It embeds bias into the data model. It punishes curiosity by making change expensive.
+---
+
+## 3. The Vision: Schema Emergence
+
+Lazy Data Modeling proposes a simple idea:
+
+> **Let the data arrive first. Let the structure emerge later.**
+
+lzdb embodies this idea by:
+
+- creating tables automatically
+- inferring virtual primary keys from inserted data
+- evolving schemas lazily as new fields appear
+- supporting cross-references without upfront design
+- supporting N-to-N relationships without schema changes
+- storing relationships in a dedicated system table
+- committing changes only when explicitly requested
+
+Structure becomes a *reflection* of understanding, not a prerequisite for it.
+
+---
+
+## 4. The Ethical Argument: Freedom to Explore
+
+Premature structure is a form of coercion.
+It forces the researcher to commit to assumptions they may not yet believe.
 
 Lazy Data Modeling defends the researcher’s right to:
 
 - store data without knowing its meaning
-- revise understanding without performing migrations
+- revise understanding without migrations
 - let relationships emerge organically
-- treat structure as a product of insight, not a constraint on it
+- treat structure as a product of insight
 
-This is not merely a convenience — it is a matter of intellectual freedom.
+Exploration should not be punished.
+Curiosity should not be expensive.
 
-## The Method: Structure Follows Discovery
+---
 
-Lazy Data Modeling is built on a simple principle:  
-**Structure follows discovery.**
+## 5. The Method: How Lazy Data Works
 
-This principle has several implications:
+Lazy Data Modeling is built on five principles:
 
-- Data should be stored as soon as it is encountered.
-- Interpretation should happen gradually, as patterns emerge.
-- Models should be artifacts of understanding, not prerequisites for it.
-- Tools should adapt to the researcher, not the other way around.
+### 1. Data first, structure later
+Store now. Understand later.
+lzdb creates tables only when needed and infers uniqueness from actual data.
 
-This mirrors how scientific knowledge develops: observation precedes theory, and theory precedes formalization. Lazy Data Modeling simply applies this logic to data systems.
+### 2. Exploration is a valid state of knowledge
+Uncertainty is not a defect.
+lzdb allows incomplete, evolving, and heterogeneous data.
 
-## The Tool: lzdb as a Proof of Concept
+### 3. Relationships emerge through use
+Cross-references become foreign keys.
+Associations become entries in `lzdb_links`.
 
-lzdb embodies the Lazy Data philosophy through:
+### 4. Friction is the enemy of insight
+Migrations interrupt discovery.
+lzdb evolves schemas lazily and automatically.
 
-- zero migrations
-- zero upfront schema
-- persistent dict-like storage
-- organic schema evolution
-- implicit relationship emergence
+### 5. Structure follows discovery
+Models should reflect understanding, not precede it.
 
-It is a demonstration, not a destination. Its purpose is to show that lazy persistence is not only possible but practical. It invites researchers to rethink how they model data and to consider whether their tools support or hinder their intellectual process.
+---
 
-## The Call to Action: Join the Movement
+## 6. The Tool: lzdb
 
-Lazy Data Modeling is an invitation to researchers, developers, and thinkers who believe that discovery should not be constrained by infrastructure. It calls for tools that respect uncertainty, workflows that embrace exploration, and systems that allow structure to emerge naturally.
+lzdb demonstrates Lazy Data Modeling through:
 
-You can contribute by:
+### Automatic Table Creation
+Each new virtual primary key creates a new table:
 
-- adopting lazy persistence in your exploratory scripts
-- experimenting with lzdb
-- sharing patterns and insights
-- writing about schema emergence
-- challenging schema-first assumptions in your field
+```
+lzdb__1
+lzdb__2
+lzdb__3
+...
+```
 
-Lazy Data Modeling is not a finished doctrine — it is a growing movement. Its principles will evolve as more researchers adopt them, challenge them, and build upon them.
+The `lzdb` inventory table tracks:
+
+- collection identifiers
+- virtual primary keys
+- schema metadata
+
+### Virtual Primary Keys
+lzdb infers uniqueness from the fields provided during item creation.
+
+Example:
+
+```python
+item = dbms.newItem(param='2004', starttime='03-jan-2000', endtime='04-jan-2000')
+```
+
+Creates a table with:
+
+```
+UNIQUE (endtime, param, starttime)
+```
+
+### Cross-References
+```python
+item2 = dbms.newItem(refers=item1)
+```
+
+Creates a foreign key relationship automatically.
+
+### N-to-N Relationships
+```python
+item1.link(item2)
+```
+
+Stored in `lzdb_links`, without modifying any schema.
+
+### Lazy Field Addition
+```python
+item['clusters'] = [1,2,3]
+```
+
+Triggers:
+
+```
+ALTER TABLE ADD COLUMN clusters
+```
+
+### Explicit Persistence
+Nothing is committed until:
+
+```python
+dbms.commit()
+```
+
+This preserves the exploratory workflow.
+
+---
+
+## 7. The Call to Action
+
+Lazy Data Modeling is an invitation to rethink how we structure data.
+
+It calls for tools that:
+
+- respect uncertainty
+- embrace exploration
+- evolve with understanding
+- remove friction from discovery
+
+lzdb is not the final word — it is the beginning of a movement.
+
+A movement toward **schema-emergent data systems**.
+A movement toward **tools that adapt to thought**.
+A movement toward **freedom in exploration**.
+
+Join the movement.
+Challenge schema-first assumptions.
+Let structure follow discovery.
+

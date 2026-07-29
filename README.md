@@ -1,15 +1,15 @@
 # lzdb
 *A schema-emergent database layer for Python and PostgreSQL.*
 
-**lzdb** (Lazy Database) is a datastore that **builds and evolves its schema automatically** as data is inserted.  
+**lzdb** (Lazy Database) is a datastore that **builds and evolves its schema automatically** as data is inserted.
 Instead of designing tables upfront, lzdb lets structure **emerge naturally from the data itself**.
 
 This approach is part of the **Lazy Data Modeling** philosophy:
 
-- store first, understand later  
-- let relationships appear through use  
-- avoid premature schema design  
-- embrace uncertainty during exploration  
+- store first, understand later
+- let relationships appear through use
+- avoid premature schema design
+- embrace uncertainty during exploration
 
 lzdb is ideal for research workflows, prototypes, and dynamic data environments where the schema cannot be known in advance.
 
@@ -17,12 +17,12 @@ lzdb is ideal for research workflows, prototypes, and dynamic data environments 
 
 ## Key Features
 
-- **Automatic schema evolution**  
-- **Virtual primary keys** inferred from inserted data  
-- **Cross-references** implemented as foreign keys  
-- **N-to-N relationships** via a dedicated system table  
-- **Automatic table creation** (`lzdb__N`)  
-- **Lazy field addition** (`ALTER TABLE ADD COLUMN`)  
+- **Automatic schema evolution**
+- **Virtual primary keys** inferred from inserted data
+- **Cross-references** implemented as foreign keys
+- **N-to-N relationships** via a dedicated system table
+- **Automatic table creation** (`lzdb__N`)
+- **Lazy field addition** (`ALTER TABLE ADD COLUMN`)
 - **Convenience API** (`lzitem`, `lzitems`, `lzdict`, etc.)
 
 ---
@@ -135,10 +135,10 @@ create table if not exists lzdb_links(
 
 This table supports:
 
-- directed relationships  
-- undirected relationships  
-- N-to-N associations  
-- cross-collection links  
+- directed relationships
+- undirected relationships
+- N-to-N associations
+- cross-collection links
 
 It is created automatically during `dbms.commit()`.
 
@@ -170,8 +170,8 @@ CREATE TABLE IF NOT EXISTS public.lzdb__1
 
 And inserts into `lzdb`:
 
-- id: 1  
-- ukeys: endtime,param,starttime  
+- id: 1
+- ukeys: endtime,param,starttime
 
 Any item with the same virtual primary key goes into the same table.
 
@@ -199,8 +199,8 @@ CREATE TABLE IF NOT EXISTS public.lzdb__2
 
 Inserted record:
 
-- id: 1  
-- refers: 1  
+- id: 1
+- refers: 1
 
 ---
 
@@ -214,9 +214,9 @@ item2 = lzitem(refers=item1)
 
 Characteristics:
 
-- stored as a foreign key  
-- modifies the schema  
-- part of the object’s definition  
+- stored as a foreign key
+- modifies the schema
+- part of the object’s definition
 
 ### Relationship
 
@@ -226,13 +226,13 @@ item1.link(item2)
 
 Characteristics:
 
-- stored in `lzdb_links`  
-- supports N-to-N  
-- does not modify schema  
-- ideal for arbitrary associations  
+- stored in `lzdb_links`
+- supports N-to-N
+- does not modify schema
+- ideal for arbitrary associations
 
-**Rule of thumb:**  
-Use cross-references for structural relationships.  
+**Rule of thumb:**
+Use cross-references for structural relationships.
 Use `link()` for semantic relationships.
 
 ---
@@ -318,10 +318,10 @@ ALTER TABLE lzdb__2 ADD COLUMN freqmap character varying;
 
 Record becomes:
 
-- id: 1  
-- refers: 1  
-- clusters: [1,2,3]  
-- freqmap: [4,5,6]  
+- id: 1
+- refers: 1
+- clusters: [1,2,3]
+- freqmap: [4,5,6]
 
 Updates simply modify the row.
 
@@ -331,10 +331,10 @@ Updates simply modify the row.
 
 lzdb installs convenience functions:
 
-- `lzitem` → `newItem`  
-- `lzc` → `collections`  
-- `lzcnames` → `collectionNames`  
-- `lzitems` → `items`  
+- `lzitem` → `newItem`
+- `lzc` → `collections`
+- `lzcnames` → `collectionNames`
+- `lzitems` → `items`
 
 Example:
 
@@ -385,5 +385,5 @@ Read the full manifesto here:
 
 ## License
 
-MIT License  
+MIT License
 Copyright (c) 2026
