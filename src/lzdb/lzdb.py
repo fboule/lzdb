@@ -37,66 +37,87 @@ class LZDB(object):
     traceon = False
 
     class lzdbItem(dict):
-        __ukeys = None
-        __fkeys = None
-        __collection = None
-        __id = None
-        __links = None
+        def __init__(self, collection, **kwargs):
+            super().__init__()
+            self.__collection = collection
 
-        def __init__(self, dbms, id=None, collection=None, **refs):
-            self.__ukeys = sorted(refs.keys())
-            self.__fkeys = {}
-            self.__links = []
-            self.__id = id
-            for k, v in refs.items():
-                self[k] = v
-                if isinstance(v, LZDB.lzdbItem): self.__fkeys[k] = v.collection()
-            if collection is None:
-                self.__collection = dbms.collections(self.__ukeys, self.__fkeys)
-            else:
-                self.__collection = collection
+            # Explicit PK only when user sets id() manually
+            self.__explicit_id = False
 
-        def id(self, id = None):
-            if id is not None: self.__id = id
-            return self.__id
-
-        def set(self, **kwargs):
             for k, v in kwargs.items():
                 self[k] = v
 
-        def foreignKeys(self):
-            return self.__fkeys
+        def fields(self):
+            """
+            Return all non-FK, non-internal fields of this item.
+            These become VARCHAR columns.
+            """
+            result = []
+            for key, value in self.items():
+                # Skip foreign-key fields
+                if isinstance(value, LZDB.lzdbItem):
+                    continue
+                result.append(key)
+            return result
 
-        def uniqueKeys(self):
-            return self.__ukeys
+        def links(self):
+            """
+            Return all foreign-key links as (field_name, referenced_item) pairs.
+            """
+            result = []
+            for field, value in self.__dict__.items():
+                # Foreign keys are stored as lzdbItem instances
+                if isinstance(value, LZDB.lzdbItem):
+                    result.append((field, value))
+            return result
+
+        def set(self, **kwargs):
+            """
+            Update fields of the item (original lzdb behavior).
+            """
+            for k, v in kwargs.items():
+                self[k] = v
 
         def uniqueDict(self):
-            v = {}
-            for k in self.__ukeys:
-                v[k] = self[k]
-            return v
+            """
+            Return the virtual PK dictionary.
+            This is used for deduplication and schema grouping.
+            """
+            return {k: self[k] for k in self.virtualKeys()}
 
         def collection(self):
             return self.__collection
 
-        def link(self, items, reltype=REL_DIRECTED):
+        def id(self, value=None):
+            if value is None:
+                return self.get("id")
+            # Only explicit PK when user provides a real value
+            self["id"] = value
+            self.__explicit_id = True
 
-            if not isinstance(items, list):
-                items = [items]
+        def hasExplicitPK(self):
+            """
+            True only if user explicitly set id().
+            Virtual PKs NEVER count as explicit PKs.
+            """
+            return self.__explicit_id
 
-            for item in items:
-
-                self.__links.append(
-                    {
-                        'item': item,
-                        'reltype': reltype
-                    }
-                )
-
-            return self
-
-        def links(self):
-            return self.__links
+        def virtualKeys(self):
+            """
+            Virtual PK = schema descriptor.
+            These fields determine the table schema,
+            NOT uniqueness constraints.
+            """
+            keys = []
+            for k, v in self.items():
+                if k == "id":
+                    continue
+                if k.startswith("refers"):
+                    continue
+                if isinstance(v, list):
+                    continue
+                keys.append(k)
+            return sorted(keys)
 
     class Collection(object):
         __id = None
@@ -109,111 +130,180 @@ class LZDB(object):
         def __init__(self, dbms, ukeys=None, fkeys={}, dbitem=None, tname=''):
             self.__dbms = dbms
             self.__tname = tname
-            if ukeys is not None:
-                self.__fkeys = fkeys
-                self.__fields = []
-            if dbitem is not None:
-                ukeys = dbitem.uniqueKeys()
-                self.__fkeys = dbitem.foreignKeys()
+
+            # Initialize fields
+            self.__fields = []
+            self.__fkeys = {}
+
+            # CASE 1: Collection created from virtual PK signature
             if ukeys is not None:
                 self.__ukeys = sorted(ukeys)
-                self.__fields.extend(ukeys)
+                self.__fields.extend(self.__ukeys)
+                self.__fkeys = fkeys
+
+            # CASE 2: Collection created from dbitem (loading from DB)
+            if dbitem is not None:
+                # IMPORTANT:
+                # virtualKeys() define schema, NOT uniqueness
+                self.__ukeys = dbitem.virtualKeys()
+                self.__fkeys = dbitem.foreignKeys()
+                self.__fields.extend(self.__ukeys)
+
+            # Add FK fields to schema
             for field in self.__fkeys:
-                if field not in self.__fields: self.__fields.append(field)
+                if field not in self.__fields:
+                    self.__fields.append(field)
 
         def id(self):
             return self.__id
 
-        def name(self, tname = None):
+        def name(self, tname=None):
             if tname is not None:
                 self.__tname = tname
             return self.__tname
 
         def uniqueKeys(self):
+            """
+            ADAPTED:
+            uniqueKeys = virtual PK fields (schema signature)
+            NOT real PKs.
+            """
             return self.__ukeys
 
         def read(self, db, id):
             self.__id = id
             self.read_fkeys(db, id)
+
             rows = db.execute("select * from %s" % id)
             self.__fields = [desc[0] for desc in db.description]
+
             if LZDB.traceon:
-                tname = ""
-                if self.__tname != '': tname = f" as '{self.__tname}'"
+                tname = f" as '{self.__tname}'" if self.__tname else ""
                 if len(self.__fkeys) == 0:
-                    print('Found %i rows in %s(%s)%s' % (rows.rowcount, id, ','.join(self.__ukeys), tname))
+                    print(f"Found {rows.rowcount} rows in {id}({','.join(self.__ukeys)}){tname}")
                 else:
-                    print('Found %i rows in %s(%s)%s with references:' % (rows.rowcount, id, ','.join(self.__ukeys), tname))
+                    print(f"Found {rows.rowcount} rows in {id}({','.join(self.__ukeys)}){tname} with references:")
                     for name, collection in self.__fkeys.items():
-                        print(f'  {name} to {collection.id()}')
+                        print(f"  {name} to {collection.id()}")
+
             for row in rows:
                 pkitems = dict(zip(self.__fields, row))
                 items = {}
+
                 for kk in self.__fields:
                     if kk in self.__fkeys:
-                        items[kk] = self.__dbms.items(collection = self.__fkeys[kk], id = pkitems[kk])
+                        items[kk] = self.__dbms.items(collection=self.__fkeys[kk], id=pkitems[kk])
                     else:
                         try:
                             items[kk] = datetime.datetime.strptime(pkitems[kk], "%Y-%m-%d %H:%M:%S")
                         except:
                             items[kk] = pkitems[kk]
+
                 obj = {}
                 for field in self.__ukeys:
                     obj[field] = items[field]
+
                 dbitem = self.__dbms.newItem(collection=self, **obj)
                 dbitem.id(items['id'])
+
                 for field in items:
                     if field not in self.__ukeys:
                         dbitem[field] = items[field]
 
         def read_fkeys(self, db, id):
             s = """SELECT 
-                kcu.column_name, 
-                ccu.table_name AS foreign_table_name 
-            FROM 
-                information_schema.table_constraints AS tc 
-                JOIN information_schema.key_column_usage AS kcu
-                  ON tc.constraint_name = kcu.constraint_name
-                  AND tc.table_schema = kcu.table_schema
-                JOIN information_schema.constraint_column_usage AS ccu
-                  ON ccu.constraint_name = tc.constraint_name
-                  AND ccu.table_schema = tc.table_schema
-            WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name='%s';""" % id
+                    kcu.column_name, 
+                    ccu.table_name AS foreign_table_name 
+                FROM 
+                    information_schema.table_constraints AS tc 
+                    JOIN information_schema.key_column_usage AS kcu
+                      ON tc.constraint_name = kcu.constraint_name
+                      AND tc.table_schema = kcu.table_schema
+                    JOIN information_schema.constraint_column_usage AS ccu
+                      ON ccu.constraint_name = tc.constraint_name
+                      AND ccu.table_schema = tc.table_schema
+                WHERE tc.constraint_type = 'FOREIGN KEY' AND tc.table_name='%s';""" % id
+
             db.execute(s)
             items = db.fetchall()
             self.__fkeys = {}
+
             for field, collid in dict(items).items():
-                self.__fkeys[field] = self.__dbms.collections(id = collid)
+                self.__fkeys[field] = self.__dbms.collections(id=collid)
 
         def createNewFields(self, db, dbitem):
+            # Get existing columns
+            db.execute(f"""
+                SELECT column_name
+                FROM information_schema.columns
+                WHERE table_name = '{self.__id}'
+            """)
+            existing = {row[0] for row in db.fetchall()}
+
             newFields = []
-            for field in dbitem.keys():
-                if field not in self.__fields:
-                    newFields.append(field)
-            if len(newFields) == 0: return
-            s = f'alter table {self.__id} ' + ', '.join([ f'add column {x} varchar' for x in newFields])
-            db.execute(s)
+
+            for field in dbitem.fields():
+                if field in existing:
+                    continue
+
+                value = dbitem.get(field)
+
+                # TRUE foreign key: value is another lzdbItem
+                if isinstance(value, LZDB.lzdbItem):
+                    db.execute(
+                        f"ALTER TABLE {self.__id} "
+                        f"ADD COLUMN {field} INTEGER REFERENCES {value.collection().id()}"
+                    )
+                    continue
+
+                # Normal field → VARCHAR
+                newFields.append(field)
+
+            # Add normal fields
+            for field in newFields:
+                db.execute(f"ALTER TABLE {self.__id} ADD COLUMN {field} VARCHAR")
+
             self.__fields.extend(newFields)
 
         def createTable(self, db):
-            ukeys = ','.join(self.__ukeys)
-            fields = sorted([x for x in self.__fields if x != 'id'])
-            res = db.execute(
-                f"insert into lzdb(ukeys, tname) values('{ukeys}','{self.__tname}') on conflict(ukeys) do update set ukeys = EXCLUDED.ukeys, tname = '{self.__tname}' returning id")
-            self.__id= f"lzdb__{res.fetchone()[0]}"
+            # Ensure inventory table exists
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS lzdb (
+                    id SERIAL PRIMARY KEY,
+                    ukeys TEXT,
+                    tname TEXT
+                )
+            """)
 
-            s = "create table if not exists %s(id serial primary key" % self.__id
-            if len(self.__fkeys) > 0:
-                for k, collection in self.__fkeys.items():
-                    kk = '%s integer references %s' % (k, collection.id())
-                    s = "%s, %s" % (s, kk)
-            k = ', '.join([f'{x} varchar' for x in fields if x not in self.__fkeys])
-            if k != '': s = f'{s}, {k}'
-            if len(ukeys) > 0: s = s + ", unique(%s)" % ukeys
-            s = s + ");"
+            # Register this collection in the inventory table
+            ukeys = ",".join(self.uniqueKeys() or [])
+            tname = self.name() if hasattr(self, "name") else ""
+
+            db.execute(
+                "INSERT INTO lzdb(ukeys, tname) VALUES (%s, %s) RETURNING id",
+                (ukeys, tname),
+            )
+            res = db.fetchone()
+            self.__id = f"lzdb__{res[0]}"
+
+            # Build CREATE TABLE statement for the actual collection table
+            s = f"CREATE TABLE IF NOT EXISTS {self.__id}(id SERIAL PRIMARY KEY"
+
+            # Foreign keys
+            for k, collection in self.__fkeys.items():
+                fk = f"{k} INTEGER REFERENCES {collection.id()}"
+                s += f", {fk}"
+
+            # Data fields (all non‑FK fields are VARCHAR)
+            fields = self.uniqueKeys() or []
+            data_fields = [f"{x} VARCHAR" for x in fields if x not in self.__fkeys]
+            if data_fields:
+                s += ", " + ", ".join(data_fields)
+
+            # Close CREATE TABLE
+            s += ");"
+
             db.execute(s)
-            for field in self.__ukeys + list(self.__fkeys.keys()):
-                if field not in self.__fields: self.__fields.append(field)
 
     def __init__(self, conn, traceon = False):
         import inspect
@@ -227,7 +317,14 @@ class LZDB(object):
         db = conn.cursor()
         db.execute(
             "select exists(select 1 from information_schema.tables where table_schema='public' and table_name='lzdb')")
-        if not db.fetchone()[0]: return
+        if not db.fetchone()[0]:
+            db.execute("""
+                CREATE TABLE IF NOT EXISTS lzdb (
+                    id SERIAL PRIMARY KEY,
+                    ukeys TEXT,
+                    tname TEXT
+                );
+            """)
 
         db.execute("select id, ukeys, tname from lzdb")
         tables = db.fetchall()
@@ -242,21 +339,31 @@ class LZDB(object):
             self.__collections.append(collection)
             collection.read(db, id)
 
-        self.register(stack = inspect.stack()[1])
+        self.register()
 
-    def register(self, stack = None):
-        import inspect
+    @property
+    def conn(self):
+        return self.__conn
+
+    def register(self, stack=None):
+        import inspect, pprint
+
+        # Immediate caller of register()
         if stack is None:
             stack = inspect.stack()[1]
+
         caller_globals = stack.frame.f_globals
-        ptrs = {
-            'lzitem': 'newItem',
-            'lzitems': 'items',
-            'lzc': 'collections',
-            'lzcnames': 'collectionsNames',
-        }
-        for k, v in ptrs.items():
-            caller_globals[k] = getattr(self, v)
+
+        def lzitem(dbms, **kwargs):
+            return dbms.newItem(**kwargs)
+
+        def lzitems(dbms, **kwargs):
+            return dbms.items(**kwargs)
+
+        caller_globals['lzitem'] = lzitem
+        caller_globals['lzitems'] = lzitems
+        caller_globals['lzc'] = self.collections
+        caller_globals['lzcnames'] = self.collectionsNames
         caller_globals['dd'] = lzdict()
         caller_globals['pp'] = pprint.PrettyPrinter().pprint
 
@@ -303,62 +410,47 @@ class LZDB(object):
             collection.createTable(self.__db)
 
     def __saveItem(self, dbitem):
-        dbitem.collection().createNewFields(
-            self.__db,
-            dbitem
-        )
+        coll = dbitem.collection()
 
-        fields = sorted(dbitem.keys())
-        ukeys = dbitem.uniqueKeys()
+        # Ensure schema is up to date
+        coll.createNewFields(self.__db, dbitem)
 
-        datafields = [
-            x for x in fields
-            if x not in ukeys
-        ]
-
+        # Build field list
+        fields = []
         values = []
 
-        for field in fields:
+        for field in sorted(dbitem.keys()):
+            # Skip id unless explicit PK
+            if field == "id" and not dbitem.hasExplicitPK():
+                continue
 
             value = dbitem[field]
 
+            # Foreign key: store referenced id
             if isinstance(value, LZDB.lzdbItem):
                 value = value.id()
 
+            fields.append(field)
             values.append(value)
 
+        # Build INSERT
         sql = (
-            f"insert into {dbitem.collection().id()}"
-            f"({','.join(fields)}) values("
+            f"INSERT INTO {coll.id()} ({','.join(fields)}) VALUES("
             + ", ".join([f"'{v}'" for v in values])
             + ")"
         )
 
-        if len(datafields) > 0 and len(ukeys) > 0:
+        # Implicit PK → allow duplicates
+        if not dbitem.hasExplicitPK():
+            sql += " ON CONFLICT DO NOTHING"
 
-            updates = [
-                f"{k}=EXCLUDED.{k}"
-                for k in datafields
-            ]
+        sql += " RETURNING id"
 
-            sql += (
-                f" on conflict({','.join(ukeys)}) "
-                f"do update set {','.join(updates)}"
-            )
-
-        else:
-
-            sql += (
-                f" on conflict({','.join(ukeys)}) "
-                f"do nothing"
-            )
-
-        sql += " returning id"
-
+        # Execute
         self.__db.execute(sql)
-
         res = self.__db.fetchone()
 
+        # Assign auto-generated id
         if res is not None:
             dbitem.id(res[0])
 
@@ -418,17 +510,40 @@ class LZDB(object):
                         reltype
                     )
 
-    def newItem(self, collection=None, id=None, **refs):
-        dbitem = None
-        for item in self.__items:
-            if refs == item.uniqueDict():
-                dbitem = item
-                dbitem.set(**refs)
-                break
-        if dbitem is None:
-            dbitem = self.lzdbItem(self, collection = collection, **refs)
-            self.__items.append(dbitem)
-        dbitem.id(id)
+    def newItem(self, collection=None, id=None, __loading=False, **refs):
+        # 1. Deduplication only when NOT loading from DB
+        if not __loading:
+            for item in self.__items:
+                if refs == item.uniqueDict():
+                    item.set(**refs)
+                    if id is not None:
+                        item.id(id)
+                    return item
+
+        # 2. If no collection provided, derive one from virtual PK
+        if collection is None:
+            temp = self.lzdbItem(None, **refs)
+            ukeys = temp.virtualKeys()
+
+            # Try existing collection
+            for coll in self.__collections:
+                if coll.uniqueKeys() == ukeys:
+                    collection = coll
+                    break
+
+            # Otherwise create new collection
+            if collection is None:
+                collection = LZDB.Collection(self, ukeys=ukeys, fkeys={}, dbitem=None, tname='')
+                self.__collections.append(collection)
+                collection.createTable(self.__db)
+
+        # 3. Create item bound to collection
+        dbitem = self.lzdbItem(collection, **refs)
+        self.__items.append(dbitem)
+
+        if id is not None:
+            dbitem.id(id)
+
         return dbitem
 
     def collectionsNames(self):
@@ -540,4 +655,3 @@ class lzdict(dict):
         if not super().__contains__(key):
             self[key] = self.__loader.get(key)
         return super().__getitem__(key)
-

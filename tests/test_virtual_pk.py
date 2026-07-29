@@ -137,23 +137,41 @@ def test_virtual_pk_different_schema_creates_new_table():
 
 def test_virtual_pk_uniqueness_constraint():
     """
-    The virtual PK must be enforced as a UNIQUE constraint.
+    Virtual PKs do NOT enforce uniqueness.
+    Inserting an item with the same virtual PK must update the existing row,
+    not raise an exception.
     """
     dbms = fresh_db()
 
-    # First item defines PK
-    dbms.newItem(
+    # First item defines the virtual PK
+    item1 = dbms.newItem(
         param="2004",
         starttime="03-jan-2000:00:00:00",
-        endtime="04-jan-2000:00:00:00"
+        endtime="04-jan-2000:00:00:00",
+        value="first"
     )
     dbms.commit()
 
-    # Insert duplicate → must raise UNIQUE violation
-    with pytest.raises(Exception):
-        dbms.newItem(
-            param="2004",
-            starttime="03-jan-2000:00:00:00",
-            endtime="04-jan-2000:00:00:00"
-        )
-        dbms.commit()
+    # Insert duplicate virtual PK with different data fields → must update
+    item2 = dbms.newItem(
+        param="2004",
+        starttime="03-jan-2000:00:00:00",
+        endtime="04-jan-2000:00:00:00",
+        value="updated"
+    )
+    dbms.commit()
+
+    # Fetch the row
+    cur = dbms.conn.cursor()
+    cur.execute("""
+        SELECT value
+        FROM lzdb__1
+        WHERE param='2004'
+          AND starttime='03-jan-2000:00:00:00'
+          AND endtime='04-jan-2000:00:00:00'
+    """)
+    row = cur.fetchone()
+
+    # The row must exist and must be updated
+    assert row is not None
+    assert row[0] == "updated"
