@@ -44,11 +44,25 @@ class LZDB(object):
             self.__collection = collection
             self.__id = None
             self.__loaded = False
+            self.__dirty = True
 
             self.__links = []
 
             for k, v in kwargs.items():
                 self[k] = v
+
+        def __setitem__(self, key, value):
+            super().__setitem__(key, value)
+            self.__dirty = True
+
+        def markDirty(self):
+            self.__dirty = True
+
+        def clearDirty(self):
+            self.__dirty = False
+
+        def isDirty(self):
+            return self.__dirty
 
         def foreignKeys(self):
             result = {}
@@ -212,6 +226,8 @@ class LZDB(object):
                 for field in items:
                     if field not in (self.__ukeys or []):
                         dbitem[field] = items[field]
+                        dbitem.markLoaded()
+                        dbitem.clearDirty()
 
         def read_fkeys(self, db, id):
             s = """SELECT 
@@ -385,8 +401,11 @@ class LZDB(object):
     def ensure(self, **refs):
         matches = self.items(**refs)
 
-        if len(matches) > 0:
-            return matches[0]
+        if matches:
+            return min(
+                matches,
+                key=lambda item: item.id()
+            )
 
         return self.newItem(**refs)
 
@@ -438,7 +457,6 @@ class LZDB(object):
         # Ensure schema is up to date
         coll.createNewFields(self.__db, dbitem)
 
-        # Build field list
         fields = []
         values = []
 
@@ -455,28 +473,72 @@ class LZDB(object):
             fields.append(field)
             values.append(value)
 
-        # Build INSERT
+        # ------------------------------------------------------------------
+        # UPDATE existing row
+        # ------------------------------------------------------------------
+        if dbitem.isLoaded():
+
+            if len(fields) > 0:
+
+                assignments = [
+                    f"{field}=%s"
+                    for field in fields
+                ]
+
+                sql = (
+                    f"UPDATE {coll.id()} "
+                    f"SET {', '.join(assignments)} "
+                    f"WHERE id=%s"
+                )
+
+                params = values + [dbitem.id()]
+
+                self.__db.execute(sql, params)
+
+            dbitem.clearDirty()
+
+            return
+
+        # ------------------------------------------------------------------
+        # INSERT new row
+        # ------------------------------------------------------------------
         if len(fields) == 0:
-            sql = f"INSERT INTO {coll.id()} DEFAULT VALUES RETURNING id"
-        else:
+
             sql = (
-                f"INSERT INTO {coll.id()} ({','.join(fields)}) VALUES("
-                + ", ".join([f"'{v}'" for v in values])
-                + ") RETURNING id"
+                f"INSERT INTO {coll.id()} "
+                f"DEFAULT VALUES "
+                f"RETURNING id"
             )
 
-        # Execute
-        self.__db.execute(sql)
+            self.__db.execute(sql)
+
+        else:
+
+            placeholders = ", ".join(["%s"] * len(values))
+
+            sql = (
+                f"INSERT INTO {coll.id()} "
+                f"({','.join(fields)}) "
+                f"VALUES ({placeholders}) "
+                f"RETURNING id"
+            )
+
+            self.__db.execute(sql, values)
+
         res = self.__db.fetchone()
 
-        # Assign auto-generated id
         if res is not None:
             dbitem.id(res[0])
 
+        dbitem.markLoaded()
+        dbitem.clearDirty()
+
     def __saveItems(self):
         for dbitem in self.__items:
-            if dbitem.isLoaded():
+
+            if not dbitem.isDirty():
                 continue
+
             self.__saveItem(dbitem)
 
     def __insertLink(self, src, dst, reltype):

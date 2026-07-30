@@ -105,60 +105,73 @@ def test_fk_value_storage():
 def test_reload_persists_fk():
     dbms = fresh_db()
 
-    sat = dbms.newItem(name="SAT1")
+    sat = dbms.newItem(
+        name="FK_RELOAD_SAT"
+    )
 
     event = dbms.newItem(
         satellite=sat,
-        timestamp="2025-01-01"
+        timestamp="FK_RELOAD_EVENT"
     )
 
     dbms.commit()
 
+    event_id = event.id()
+    event_collection = event.collection().id()
+
+    satellite_id = sat.id()
+
     dbms2 = LZDB(dbms.conn)
 
-    found = False
+    reloaded_event = None
 
     for item in dbms2.items():
-        if item.get("timestamp") == "2025-01-01":
-            found = True
+        if (
+            item.collection().id() == event_collection
+            and item.id() == event_id
+        ):
+            reloaded_event = item
+            break
 
-            print(item)
-            print(item.keys())
-
-            assert "satellite" in item
-            assert item["satellite"] is not None
-
-    assert found
+    assert reloaded_event is not None
+    assert "satellite" in reloaded_event
+    assert reloaded_event["satellite"] is not None
+    assert reloaded_event["satellite"].id() == satellite_id
 
 def test_reload_preserves_fk_relationship():
     dbms = fresh_db()
 
-    sat = dbms.newItem(name="SAT1")
+    sat = dbms.newItem(
+        name="FK_RELATIONSHIP_SAT"
+    )
 
     event = dbms.newItem(
         satellite=sat,
-        timestamp="2025-01-01"
+        timestamp="FK_RELATIONSHIP_EVENT"
     )
 
     dbms.commit()
 
+    satellite_id = sat.id()
+    event_id = event.id()
+
     dbms2 = LZDB(dbms.conn)
 
     satellite = None
-    reloaded_event = None
+    event = None
 
     for item in dbms2.items():
 
-        if item.get("name") == "SAT1":
+        if item.id() == satellite_id:
             satellite = item
 
-        if item.get("timestamp") == "2025-01-01":
-            reloaded_event = item
+        if item.id() == event_id:
+            event = item
 
     assert satellite is not None
-    assert reloaded_event is not None
+    assert event is not None
 
-    assert reloaded_event["satellite"] is satellite
+    assert event["satellite"] is satellite
 
 def test_fk_added_after_object_creation():
     dbms = fresh_db()
@@ -203,33 +216,41 @@ def test_fk_added_after_object_creation():
     assert row is not None
     assert row[0] == sat.id()
 
-def test_reload_preserves_late_added_fk():
+def test_reload_persists_fk():
+    """
+    A foreign-key relationship must survive a save/reload cycle.
+    """
     dbms = fresh_db()
 
     sat = dbms.newItem(
-        name="SAT1"
+        name="FK_RELOAD_SAT"
     )
 
     event = dbms.newItem(
-        timestamp="2025-01-01"
+        satellite=sat,
+        timestamp="FK_RELOAD_EVENT"
     )
 
     dbms.commit()
 
-    event["satellite"] = sat
+    event_id = event.id()
+    event_collection = event.collection().id()
+    satellite_id = sat.id()
 
-    dbms.commit()
-
+    # Simulate application restart
     dbms2 = LZDB(dbms.conn)
 
     reloaded_event = None
 
     for item in dbms2.items():
-        if item.get("timestamp") == "2025-01-01":
+        if (
+            item.collection().id() == event_collection
+            and item.id() == event_id
+        ):
             reloaded_event = item
             break
 
     assert reloaded_event is not None
     assert "satellite" in reloaded_event
     assert reloaded_event["satellite"] is not None
-    assert reloaded_event["satellite"].id() == sat.id()
+    assert reloaded_event["satellite"].id() == satellite_id
