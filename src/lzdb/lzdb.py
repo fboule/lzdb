@@ -423,13 +423,14 @@ class LZDB(object):
             values.append(value)
 
         # Build INSERT
-        sql = (
-            f"INSERT INTO {coll.id()} ({','.join(fields)}) VALUES("
-            + ", ".join([f"'{v}'" for v in values])
-            + ")"
-        )
-
-        sql += " RETURNING id"
+        if len(fields) == 0:
+            sql = f"INSERT INTO {coll.id()} DEFAULT VALUES RETURNING id"
+        else:
+            sql = (
+                f"INSERT INTO {coll.id()} ({','.join(fields)}) VALUES("
+                + ", ".join([f"'{v}'" for v in values])
+                + ") RETURNING id"
+            )
 
         # Execute
         self.__db.execute(sql)

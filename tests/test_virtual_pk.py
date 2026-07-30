@@ -269,3 +269,159 @@ def test_link_retrieval():
     items = dbms.linkedItems(sat)
 
     assert len(items) == 2
+
+def test_reload_persists_items():
+    conn = pg.connect(
+        dbname="test",
+        host="localhost"
+    )
+
+    dbms = LZDB(conn)
+
+    item = dbms.newItem(
+        param="2004",
+        starttime="03-jan-2000:00:00:00",
+        endtime="04-jan-2000:00:00:00"
+    )
+
+    dbms.commit()
+
+    dbms2 = LZDB(conn)
+
+    items = dbms2.items()
+
+    assert len(items) >= 1
+
+    loaded = items[0]
+
+    assert loaded["param"] == "2004"
+
+def test_reload_persists_fk():
+    dbms = fresh_db()
+
+    sat = dbms.newItem(name="SAT1")
+
+    event = dbms.newItem(
+        satellite=sat,
+        timestamp="2025-01-01"
+    )
+
+    dbms.commit()
+
+    dbms2 = LZDB(dbms.conn)
+
+    found = False
+
+    for item in dbms2.items():
+        if "timestamp" in item:
+            found = True
+            assert item["satellite"] is not None
+
+    assert found
+
+def test_undirected_link():
+    dbms = fresh_db()
+
+    a = dbms.newItem(name="A")
+    b = dbms.newItem(name="B")
+
+    a.link(b, LZDB.REL_UNDIRECTED)
+
+    dbms.commit()
+
+    a_links = dbms.linkedItems(a)
+    b_links = dbms.linkedItems(b)
+
+    assert b in a_links
+    assert a in b_links
+
+def test_fk_and_graph_link_coexist():
+    dbms = fresh_db()
+
+    sat = dbms.newItem(name="SAT1")
+
+    measure = dbms.newItem(
+        satellite=sat
+    )
+
+    sat.link(measure)
+
+    dbms.commit()
+
+    links = dbms.linkedItems(sat)
+
+    assert measure in links
+
+def test_list_fields_not_in_virtual_key():
+    dbms = fresh_db()
+
+    item1 = dbms.newItem(
+        satellite="SAT1",
+        values=[1, 2, 3]
+    )
+
+    item2 = dbms.newItem(
+        satellite="SAT2",
+        values=[4, 5, 6]
+    )
+
+    assert item1.collection() is item2.collection()
+
+def test_collection_reuse_after_commit():
+    dbms = fresh_db()
+
+    item1 = dbms.newItem(
+        a="1",
+        b="2"
+    )
+
+    dbms.commit()
+
+    item2 = dbms.newItem(
+        a="3",
+        b="4"
+    )
+
+    assert item1.collection() is item2.collection()
+
+def test_empty_virtual_key_collection():
+    dbms = fresh_db()
+
+    a = dbms.newItem()
+    b = dbms.newItem()
+
+    dbms.commit()
+
+    assert a.collection() is b.collection()
+
+def test_duplicate_link_inserted_once():
+    dbms = fresh_db()
+
+    a = dbms.newItem(name="A")
+    b = dbms.newItem(name="B")
+
+    a.link(b)
+    a.link(b)
+
+    dbms.commit()
+
+    cur = dbms.conn.cursor()
+
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM lzdb_links
+        WHERE src_collection=%s
+          AND src_id=%s
+          AND dst_collection=%s
+          AND dst_id=%s
+    """,
+    (
+        int(a.collection().id().split('__')[1]),
+        a.id(),
+        int(b.collection().id().split('__')[1]),
+        b.id()
+    ))
+
+    assert cur.fetchone()[0] == 1
+
+
