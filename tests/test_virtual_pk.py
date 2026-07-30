@@ -313,8 +313,13 @@ def test_reload_persists_fk():
     found = False
 
     for item in dbms2.items():
-        if "timestamp" in item:
+        if item.get("timestamp") == "2025-01-01":
             found = True
+
+            print(item)
+            print(item.keys())
+
+            assert "satellite" in item
             assert item["satellite"] is not None
 
     assert found

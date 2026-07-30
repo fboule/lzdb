@@ -198,16 +198,19 @@ class LZDB(object):
                             items[kk] = pkitems[kk]
 
                 obj = {}
+
                 for field in (self.__ukeys or []):
+                    obj[field] = items[field]
+
+                for field in self.__fkeys:
                     obj[field] = items[field]
 
                 dbitem = self.__dbms.newItem(collection=self, __loading = True, **obj)
                 dbitem.id(items['id'])
                 dbitem.markLoaded()
 
-
                 for field in items:
-                    for field in (self.__ukeys or []):
+                    if field not in (self.__ukeys or []):
                         dbitem[field] = items[field]
 
         def read_fkeys(self, db, id):
@@ -229,7 +232,8 @@ class LZDB(object):
             self.__fkeys = {}
 
             for field, collid in dict(items).items():
-                self.__fkeys[field] = self.__dbms.collections(id=collid)
+                coll = self.__dbms.collections(id=collid)
+                self.__fkeys[field] = coll
 
         def createNewFields(self, db, dbitem):
             # Get existing columns
@@ -325,18 +329,39 @@ class LZDB(object):
                 );
             """)
 
+
         db.execute("select id, ukeys, tname from lzdb")
         tables = db.fetchall()
-        if LZDB.traceon: print('LZDB tables found:', len(tables))
+
+        # Pass 1: create all collections
         for table in tables:
-            ukeys = None
-            if len(table[1]) > 0: ukeys = table[1].split(',')
-            id = f'lzdb__{table[0]}'
-            tname = table[2]
-            collection = LZDB.Collection(self, ukeys=ukeys, tname=tname)
-            collection.read_fkeys(db, id)
+
+            ukeys = table[1].split(',') if table[1] else []
+
+            collection = LZDB.Collection(
+                self,
+                ukeys=ukeys,
+                tname=table[2]
+            )
+
+            collection._Collection__id = f"lzdb__{table[0]}"
+
             self.__collections.append(collection)
-            collection.read(db, id)
+
+        # Pass 2: resolve FKs and load rows
+        for collection in self.__collections:
+
+            collection.read_fkeys(
+                db,
+                collection.id()
+            )
+
+        for collection in self.__collections:
+
+            collection.read(
+                db,
+                collection.id()
+            )
 
     @property
     def conn(self):
