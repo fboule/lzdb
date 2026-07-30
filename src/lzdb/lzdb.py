@@ -27,14 +27,14 @@ import getpass
 
 ACCOUNT_NAME = getpass.getuser()
 
-REL_DIRECTED = 0
-REL_UNDIRECTED = 1
-
 class LZDB(object):
     __db = None
     __collections = None
     __items = None
     traceon = False
+
+    REL_DIRECTED = 0
+    REL_UNDIRECTED = 1
 
     class lzdbItem(dict):
 
@@ -68,7 +68,9 @@ class LZDB(object):
         def fields(self):
             return list(self.keys())
 
-        def link(self, item, reltype=REL_DIRECTED):
+        def link(self, item, reltype=None):
+            if reltype is None:
+                reltype = LZDB.REL_DIRECTED
             self.__links.append({
                 "item": item,
                 "reltype": reltype
@@ -581,7 +583,7 @@ class LZDB(object):
         """
 
         params = [
-            item.collection().id(),
+            int(item.collection().id().split('__')[1]),
             item.id()
         ]
 
