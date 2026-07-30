@@ -15,7 +15,9 @@ def fresh_db():
         dbname="test",
         host="localhost"
     )
-    return LZDB(conn, traceon=False)
+    dbms = LZDB(conn, traceon=False)
+    dbms.register()
+    return dbms
 
 
 # ---------------------------------------------------------------------------

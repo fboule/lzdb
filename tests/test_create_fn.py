@@ -38,22 +38,25 @@ LZDB.traceon = True
 
 conn = pg.connect(dbname = 'test', host='127.0.0.1', user=ACCOUNT_NAME)
 dbms = LZDB(conn)
+dbms.register()
 
 # pkey is param, starttime, endtime
-item1 = lzitem(dbms, param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
-item4 = lzitem(dbms, param='2004', starttime='04-jan-2000:00:00:00', endtime='05-jan-2000:00:00:00')
+item1 = lzitem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
+item4 = lzitem(param='2004', starttime='04-jan-2000:00:00:00', endtime='05-jan-2000:00:00:00')
 
+print(type(item1.collection()))
+print(item1.collection())
 item1.collection().name("time of event")
 
 dbms.commit()
 
 # pkey is refers
-item2 = lzitem(dbms, refers=item1)
+item2 = lzitem(refers=item1)
 item2['clusters'] = [1,2,3]
 item2['freqmap']=[4,5,6]
 
 # pkey is refers
-item3 = lzitem(dbms, refers=item1)
+item3 = lzitem(refers=item1)
 item3['clusters']=[2,3,4]
 item3['freqmap']=[5,6,7]
 
@@ -62,7 +65,7 @@ item2.collection().name("clusters and frequency map")
 dbms.commit()
 
 # pkey is refers1, refers2
-item5 = lzitem(dbms, refers1=item1,refers2=item2)
+item5 = lzitem(refers1=item1,refers2=item2)
 # item5.set(k=v) and item5[k]=v are identical
 item5.set(timefreq=[1,2,5])
 

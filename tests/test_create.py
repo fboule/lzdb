@@ -38,6 +38,7 @@ LZDB.traceon = True
 
 conn = pg.connect(dbname = 'test', host='127.0.0.1', user=ACCOUNT_NAME)
 dbms = LZDB(conn)
+dbms.register()
 
 # pkey is param, starttime, endtime
 item1 = dbms.newItem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')

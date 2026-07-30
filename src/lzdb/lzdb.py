@@ -339,33 +339,24 @@ class LZDB(object):
             self.__collections.append(collection)
             collection.read(db, id)
 
-        self.register()
-
     @property
     def conn(self):
         return self.__conn
 
-    def register(self, stack=None):
-        import inspect, pprint
+    def register(self):
+        import inspect
+        import pprint
 
-        # Immediate caller of register()
-        if stack is None:
-            stack = inspect.stack()[1]
+        g = inspect.currentframe().f_back.f_globals
 
-        caller_globals = stack.frame.f_globals
-
-        def lzitem(dbms, **kwargs):
-            return dbms.newItem(**kwargs)
-
-        def lzitems(dbms, **kwargs):
-            return dbms.items(**kwargs)
-
-        caller_globals['lzitem'] = lzitem
-        caller_globals['lzitems'] = lzitems
-        caller_globals['lzc'] = self.collections
-        caller_globals['lzcnames'] = self.collectionsNames
-        caller_globals['dd'] = lzdict()
-        caller_globals['pp'] = pprint.PrettyPrinter().pprint
+        g.update({
+            'lzitem': self.newItem,
+            'lzitems': self.items,
+            'lzc': self.collections,
+            'lzcnames': self.collectionsNames,
+            'dd': lzdict(),
+            'pp': pprint.PrettyPrinter().pprint,
+         })
 
     def commit(self):
         self.__createSystemTables()
