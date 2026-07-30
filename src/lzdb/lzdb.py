@@ -37,39 +37,45 @@ class LZDB(object):
     traceon = False
 
     class lzdbItem(dict):
+
         def __init__(self, collection, **kwargs):
             super().__init__()
-            self.__collection = collection
 
-            # Explicit PK only when user sets id() manually
-            self.__explicit_id = False
+            self.__collection = collection
+            self.__id = None
+            self.__loaded = False
+
+            self.__links = []
 
             for k, v in kwargs.items():
                 self[k] = v
 
-        def fields(self):
-            """
-            Return all non-FK, non-internal fields of this item.
-            These become VARCHAR columns.
-            """
-            result = []
-            for key, value in self.items():
-                # Skip foreign-key fields
+        def foreignKeys(self):
+            result = {}
+
+            for field, value in self.items():
                 if isinstance(value, LZDB.lzdbItem):
-                    continue
-                result.append(key)
+                    result[field] = value.collection()
+
             return result
 
+        def markLoaded(self):
+            self.__loaded = True
+
+        def isLoaded(self):
+            return self.__loaded
+
+        def fields(self):
+            return list(self.keys())
+
+        def link(self, item, reltype=REL_DIRECTED):
+            self.__links.append({
+                "item": item,
+                "reltype": reltype
+            })
+
         def links(self):
-            """
-            Return all foreign-key links as (field_name, referenced_item) pairs.
-            """
-            result = []
-            for field, value in self.__dict__.items():
-                # Foreign keys are stored as lzdbItem instances
-                if isinstance(value, LZDB.lzdbItem):
-                    result.append((field, value))
-            return result
+            return self.__links
 
         def set(self, **kwargs):
             """
@@ -89,18 +95,9 @@ class LZDB(object):
             return self.__collection
 
         def id(self, value=None):
-            if value is None:
-                return self.get("id")
-            # Only explicit PK when user provides a real value
-            self["id"] = value
-            self.__explicit_id = True
-
-        def hasExplicitPK(self):
-            """
-            True only if user explicitly set id().
-            Virtual PKs NEVER count as explicit PKs.
-            """
-            return self.__explicit_id
+            if value is not None:
+                self.__id = value
+            return self.__id
 
         def virtualKeys(self):
             """
@@ -146,7 +143,6 @@ class LZDB(object):
                 # IMPORTANT:
                 # virtualKeys() define schema, NOT uniqueness
                 self.__ukeys = dbitem.virtualKeys()
-                self.__fkeys = dbitem.foreignKeys()
                 self.__fields.extend(self.__ukeys)
 
             # Add FK fields to schema
@@ -200,14 +196,16 @@ class LZDB(object):
                             items[kk] = pkitems[kk]
 
                 obj = {}
-                for field in self.__ukeys:
+                for field in (self.__ukeys or []):
                     obj[field] = items[field]
 
-                dbitem = self.__dbms.newItem(collection=self, **obj)
+                dbitem = self.__dbms.newItem(collection=self, __loading = True, **obj)
                 dbitem.id(items['id'])
+                dbitem.markLoaded()
+
 
                 for field in items:
-                    if field not in self.__ukeys:
+                    for field in (self.__ukeys or []):
                         dbitem[field] = items[field]
 
         def read_fkeys(self, db, id):
@@ -266,21 +264,21 @@ class LZDB(object):
             self.__fields.extend(newFields)
 
         def createTable(self, db):
-            # Ensure inventory table exists
-            db.execute("""
-                CREATE TABLE IF NOT EXISTS lzdb (
-                    id SERIAL PRIMARY KEY,
-                    ukeys TEXT,
-                    tname TEXT
-                )
-            """)
+            if self.__id is not None:
+                return
 
             # Register this collection in the inventory table
             ukeys = ",".join(self.uniqueKeys() or [])
             tname = self.name() if hasattr(self, "name") else ""
 
             db.execute(
-                "INSERT INTO lzdb(ukeys, tname) VALUES (%s, %s) RETURNING id",
+                """
+                INSERT INTO lzdb(ukeys, tname)
+                VALUES (%s, %s)
+                ON CONFLICT (ukeys)
+                DO UPDATE SET tname = EXCLUDED.tname
+                RETURNING id
+                """,
                 (ukeys, tname),
             )
             res = db.fetchone()
@@ -294,7 +292,6 @@ class LZDB(object):
                 fk = f"{k} INTEGER REFERENCES {collection.id()}"
                 s += f", {fk}"
 
-            # Data fields (all non‑FK fields are VARCHAR)
             fields = self.uniqueKeys() or []
             data_fields = [f"{x} VARCHAR" for x in fields if x not in self.__fkeys]
             if data_fields:
@@ -321,7 +318,7 @@ class LZDB(object):
             db.execute("""
                 CREATE TABLE IF NOT EXISTS lzdb (
                     id SERIAL PRIMARY KEY,
-                    ukeys TEXT,
+                    ukeys TEXT UNIQUE,
                     tname TEXT
                 );
             """)
@@ -411,13 +408,12 @@ class LZDB(object):
         values = []
 
         for field in sorted(dbitem.keys()):
-            # Skip id unless explicit PK
-            if field == "id" and not dbitem.hasExplicitPK():
+
+            if field == "id":
                 continue
 
             value = dbitem[field]
 
-            # Foreign key: store referenced id
             if isinstance(value, LZDB.lzdbItem):
                 value = value.id()
 
@@ -431,10 +427,6 @@ class LZDB(object):
             + ")"
         )
 
-        # Implicit PK → allow duplicates
-        if not dbitem.hasExplicitPK():
-            sql += " ON CONFLICT DO NOTHING"
-
         sql += " RETURNING id"
 
         # Execute
@@ -447,6 +439,8 @@ class LZDB(object):
 
     def __saveItems(self):
         for dbitem in self.__items:
+            if dbitem.isLoaded():
+                continue
             self.__saveItem(dbitem)
 
     def __insertLink(self, src, dst, reltype):
@@ -502,19 +496,12 @@ class LZDB(object):
                     )
 
     def newItem(self, collection=None, id=None, __loading=False, **refs):
-        # 1. Deduplication only when NOT loading from DB
-        if not __loading:
-            for item in self.__items:
-                if refs == item.uniqueDict():
-                    item.set(**refs)
-                    if id is not None:
-                        item.id(id)
-                    return item
-
-        # 2. If no collection provided, derive one from virtual PK
+        # If no collection provided, derive one from virtual PK
         if collection is None:
             temp = self.lzdbItem(None, **refs)
+
             ukeys = temp.virtualKeys()
+            fkeys = temp.foreignKeys()
 
             # Try existing collection
             for coll in self.__collections:
@@ -522,13 +509,13 @@ class LZDB(object):
                     collection = coll
                     break
 
+
             # Otherwise create new collection
             if collection is None:
-                collection = LZDB.Collection(self, ukeys=ukeys, fkeys={}, dbitem=None, tname='')
+                collection = LZDB.Collection(self, ukeys=ukeys, fkeys=fkeys, dbitem=None, tname='')
                 self.__collections.append(collection)
-                collection.createTable(self.__db)
 
-        # 3. Create item bound to collection
+        # Create item bound to collection
         dbitem = self.lzdbItem(collection, **refs)
         self.__items.append(dbitem)
 
@@ -583,12 +570,12 @@ class LZDB(object):
     def linkedItems(self, item, reltype=None):
         sql = """
             select
-                dst_table,
+                dst_collection,
                 dst_id
             from
                 lzdb_links
             where
-                src_table=%s
+                src_collection=%s
             and
                 src_id=%s
         """
@@ -608,7 +595,7 @@ class LZDB(object):
 
         for table_name, obj_id in self.__db.fetchall():
 
-            coll = self.collections(id=table_name)
+            coll = self.collections(id=f"lzdb__{table_name}")
 
             if coll is None:
                 continue
