@@ -429,4 +429,34 @@ def test_duplicate_link_inserted_once():
 
     assert cur.fetchone()[0] == 1
 
+def test_reload_preserves_fk_relationship():
+    dbms = fresh_db()
+
+    sat = dbms.newItem(name="SAT1")
+
+    event = dbms.newItem(
+        satellite=sat,
+        timestamp="2025-01-01"
+    )
+
+    dbms.commit()
+
+    dbms2 = LZDB(dbms.conn)
+
+    satellite = None
+    reloaded_event = None
+
+    for item in dbms2.items():
+
+        if item.get("name") == "SAT1":
+            satellite = item
+
+        if item.get("timestamp") == "2025-01-01":
+            reloaded_event = item
+
+    assert satellite is not None
+    assert reloaded_event is not None
+
+    assert reloaded_event["satellite"] is satellite
+
 
