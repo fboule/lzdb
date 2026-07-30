@@ -382,6 +382,14 @@ class LZDB(object):
             'pp': pprint.PrettyPrinter().pprint,
          })
 
+    def ensure(self, **refs):
+        matches = self.items(**refs)
+
+        if len(matches) > 0:
+            return matches[0]
+
+        return self.newItem(**refs)
+
     def commit(self):
         self.__createSystemTables()
         self.__createCollections()

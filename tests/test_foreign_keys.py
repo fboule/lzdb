@@ -160,3 +160,76 @@ def test_reload_preserves_fk_relationship():
 
     assert reloaded_event["satellite"] is satellite
 
+def test_fk_added_after_object_creation():
+    dbms = fresh_db()
+
+    sat = dbms.newItem(
+        name="SAT1"
+    )
+
+    event = dbms.newItem(
+        timestamp="2025-01-01"
+    )
+
+    dbms.commit()
+
+    # Add FK after both objects already exist
+    event["satellite"] = sat
+
+    dbms.commit()
+
+    cur = dbms.conn.cursor()
+
+    # Verify column was added
+    cur.execute(f"""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = '{event.collection().id()}'
+    """)
+
+    columns = {row[0] for row in cur.fetchall()}
+
+    assert "satellite" in columns
+
+    # Verify FK value stored
+    cur.execute(f"""
+        SELECT satellite
+        FROM {event.collection().id()}
+        WHERE id = {event.id()}
+    """)
+
+    row = cur.fetchone()
+
+    assert row is not None
+    assert row[0] == sat.id()
+
+def test_reload_preserves_late_added_fk():
+    dbms = fresh_db()
+
+    sat = dbms.newItem(
+        name="SAT1"
+    )
+
+    event = dbms.newItem(
+        timestamp="2025-01-01"
+    )
+
+    dbms.commit()
+
+    event["satellite"] = sat
+
+    dbms.commit()
+
+    dbms2 = LZDB(dbms.conn)
+
+    reloaded_event = None
+
+    for item in dbms2.items():
+        if item.get("timestamp") == "2025-01-01":
+            reloaded_event = item
+            break
+
+    assert reloaded_event is not None
+    assert "satellite" in reloaded_event
+    assert reloaded_event["satellite"] is not None
+    assert reloaded_event["satellite"].id() == sat.id()
