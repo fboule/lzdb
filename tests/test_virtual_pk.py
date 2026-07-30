@@ -142,3 +142,130 @@ def test_virtual_pk_allows_duplicate_rows():
     count = cur.fetchone()[0]
 
     assert count >= 2
+
+def test_fk_column_creation():
+    dbms = fresh_db()
+
+    satellite = dbms.newItem(
+        name="SAT1"
+    )
+
+    event = dbms.newItem(
+        satellite=satellite,
+        timestamp="2025-01-01"
+    )
+
+    dbms.commit()
+
+    cur = dbms.conn.cursor()
+
+    # Verify FK column exists
+    cur.execute(f"""
+        SELECT column_name
+        FROM information_schema.columns
+        WHERE table_name = '{event.collection().id()}'
+    """)
+
+    columns = {row[0] for row in cur.fetchall()}
+
+    assert "satellite" in columns
+
+def test_fk_constraint_creation():
+    dbms = fresh_db()
+
+    satellite = dbms.newItem(name="SAT1")
+
+    event = dbms.newItem(
+        satellite=satellite,
+        timestamp="2025-01-01"
+    )
+
+    dbms.commit()
+
+    cur = dbms.conn.cursor()
+
+    cur.execute(f"""
+        SELECT
+            kcu.column_name,
+            ccu.table_name
+        FROM information_schema.table_constraints tc
+        JOIN information_schema.key_column_usage kcu
+          ON tc.constraint_name = kcu.constraint_name
+        JOIN information_schema.constraint_column_usage ccu
+          ON ccu.constraint_name = tc.constraint_name
+        WHERE tc.constraint_type = 'FOREIGN KEY'
+          AND tc.table_name = '{event.collection().id()}'
+    """)
+
+    fks = cur.fetchall()
+
+    assert ("satellite", satellite.collection().id()) in fks
+
+def test_fk_value_storage():
+    dbms = fresh_db()
+
+    satellite = dbms.newItem(name="SAT1")
+
+    event = dbms.newItem(
+        satellite=satellite,
+        timestamp="2025-01-01"
+    )
+
+    dbms.commit()
+
+    cur = dbms.conn.cursor()
+
+    cur.execute(f"""
+        SELECT satellite
+        FROM {event.collection().id()}
+        WHERE id = {event.id()}
+    """)
+
+    fk_value = cur.fetchone()[0]
+
+    assert fk_value == satellite.id()
+
+def test_link_creation():
+    dbms = fresh_db()
+
+    sat = dbms.newItem(name="SAT1")
+
+    m1 = dbms.newItem(timestamp="t1", value="1")
+    m2 = dbms.newItem(timestamp="t2", value="2")
+
+    sat.link(m1)
+    sat.link(m2)
+
+    dbms.commit()
+
+    cur = dbms.conn.cursor()
+
+    cur.execute("""
+        SELECT COUNT(*)
+        FROM lzdb_links
+        WHERE src_collection=%s
+          AND src_id=%s
+    """,
+    (
+        int(sat.collection().id().split('__')[1]),
+        sat.id()
+    ))
+
+    assert cur.fetchone()[0] == 2
+
+def test_link_retrieval():
+    dbms = fresh_db()
+
+    sat = dbms.newItem(name="SAT1")
+
+    m1 = dbms.newItem(timestamp="t1", value="1")
+    m2 = dbms.newItem(timestamp="t2", value="2")
+
+    sat.link(m1)
+    sat.link(m2)
+
+    dbms.commit()
+
+    items = dbms.linkedItems(sat)
+
+    assert len(items) == 2
