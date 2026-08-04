@@ -1,3 +1,5 @@
+import glob
+
 class lzdict(dict):
     __loader = None
 

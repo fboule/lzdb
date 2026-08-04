@@ -20,7 +20,6 @@
 ################################################################################
 
 import datetime
-import glob
 import pandas as pd
 import pprint
 import getpass
