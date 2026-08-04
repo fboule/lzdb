@@ -15,6 +15,7 @@ dbms = LZDB(
     ),
     traceon=True
 )
+dbms.register()
 
 # Base item
 item1 = lzitem(

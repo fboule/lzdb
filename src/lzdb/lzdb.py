@@ -83,8 +83,17 @@ class LZDB(object):
             return list(self.keys())
 
         def link(self, item, reltype=None):
+
             if reltype is None:
                 reltype = LZDB.REL_DIRECTED
+
+            if isinstance(item, list):
+
+                for it in item:
+                    self.link(it, reltype)
+
+                return
+
             self.__links.append({
                 "item": item,
                 "reltype": reltype

@@ -21,6 +21,7 @@ dbms = LZDB(
     ),
     traceon=True
 )
+dbms.register()
 
 # Create several measurement items
 measurements = [
