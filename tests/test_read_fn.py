@@ -26,7 +26,7 @@ LZDB.traceon = True
 
 conn = pg.connect(dbname = 'test', host='127.0.0.1', user=ACCOUNT_NAME)
 dbms = LZDB(conn)
-dbms.register()
+dbms.expose()
 
 print("\nLooking up param='2004':")
 items = lzitems(param='2004')

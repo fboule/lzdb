@@ -15,7 +15,7 @@ dbms = LZDB(
     ),
     traceon=True
 )
-dbms.register()
+dbms.expose()
 
 # Base item
 item1 = lzitem(

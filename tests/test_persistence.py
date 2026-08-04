@@ -12,7 +12,7 @@ def fresh_db():
         host="localhost"
     )
     dbms = LZDB(conn, traceon=False)
-    dbms.register()
+    dbms.expose()
     return dbms
 
 

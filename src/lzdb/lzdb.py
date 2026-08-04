@@ -392,7 +392,7 @@ class LZDB(object):
     def conn(self):
         return self.__conn
 
-    def register(self):
+    def expose(self):
         import inspect
         import pprint
 
