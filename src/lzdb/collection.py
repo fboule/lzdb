@@ -88,15 +88,14 @@ class Collection(object):
             for field in self.__fkeys:
                 obj[field] = items[field]
 
-            dbitem = self.__dbms.newItem(collection=self, __loading = True, **obj)
+            dbitem = self.__dbms.newItem(collection=self, **obj)
             dbitem.id(items['id'])
-            dbitem.markLoaded()
 
             for field in items:
                 if field not in (self.__ukeys or []):
                     dbitem[field] = items[field]
-                    dbitem.markLoaded()
-                    dbitem.clearDirty()
+
+            dbitem.clearDirty()
 
     def read_fkeys(self, db, id):
         s = """SELECT 

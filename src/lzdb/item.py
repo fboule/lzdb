@@ -6,8 +6,7 @@ class LZDBItem(dict):
 
         self.__collection = collection
         self.__id = None
-        self.__loaded = False
-        self.__dirty = True
+        self.__dirty = False
 
         self.__links = []
 
@@ -35,12 +34,6 @@ class LZDBItem(dict):
                 result[field] = value.collection()
 
         return result
-
-    def markLoaded(self):
-        self.__loaded = True
-
-    def isLoaded(self):
-        return self.__loaded
 
     def fields(self):
         return list(self.keys())
