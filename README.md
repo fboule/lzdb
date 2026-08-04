@@ -327,7 +327,7 @@ Updates simply modify the row.
 
 ---
 
-## Laziness Helpers: `register()`
+## Laziness Helpers: `expose()`
 
 lzdb installs convenience functions:
 
