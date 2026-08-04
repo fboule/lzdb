@@ -399,6 +399,37 @@ pytest -v
 
 ---
 
+# Manifesto
+
+lzdb is more than a persistence layer. It is an experiment in **Lazy Data Modeling**.
+
+Traditional data modeling assumes that the structure of the data must be understood before the data can be stored.
+
+lzdb challenges that assumption.
+
+Instead of designing schemas, foreign keys, constraints, and migrations upfront, lzdb encourages:
+
+- storing first
+- observing actual usage
+- allowing collections to emerge naturally
+- evolving structure incrementally
+- separating structural relationships from semantic relationships
+
+For the complete rationale and philosophy behind the project, see:
+
+[MANIFESTO.md](MANIFESTO.md)
+
+The manifesto discusses:
+
+- why schemas should emerge from data
+- why duplication is not always the enemy
+- collection signatures
+- structural versus semantic relationships
+- exploratory database design
+- the principles of Lazy Data Modeling
+
+---
+
 ## License
 
 GNU General Public License v3.0 or later (GPL-3.0-or-later).
