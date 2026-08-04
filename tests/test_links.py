@@ -1,5 +1,5 @@
 import psycopg as pg
-from lzdb import LZDB
+from lzdb import *
 
 
 # ---------------------------------------------------------------------------
@@ -71,7 +71,7 @@ def test_undirected_link():
     a = dbms.newItem(name="A")
     b = dbms.newItem(name="B")
 
-    a.link(b, LZDB.REL_UNDIRECTED)
+    a.link(b, LZDB_REL_UNDIRECTED)
 
     dbms.commit()
 
