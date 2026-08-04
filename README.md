@@ -1,387 +1,406 @@
 # lzdb
+
 *A schema-emergent database layer for Python and PostgreSQL.*
 
-**lzdb** (Lazy Database) is a datastore that **builds and evolves its schema automatically** as data is inserted.
-Instead of designing tables upfront, lzdb lets structure **emerge naturally from the data itself**.
+## Overview
 
-This approach is part of the **Lazy Data Modeling** philosophy:
+lzdb (Lazy Database) is a Python persistence layer that allows database structure to emerge from the objects being stored.
 
-- store first, understand later
-- let relationships appear through use
-- avoid premature schema design
-- embrace uncertainty during exploration
+Instead of designing tables, foreign keys, and migrations up front, lzdb automatically creates collections, evolves schemas, manages foreign keys, and persists relationships as your application grows.
 
-lzdb is ideal for research workflows, prototypes, and dynamic data environments where the schema cannot be known in advance.
+The guiding principle is:
+
+> Store first. Model later.
+
+lzdb is particularly useful for:
+
+- Research projects
+- Scientific data processing
+- Exploratory analytics
+- Rapid prototyping
+- ETL staging systems
+- Knowledge graph applications
+- Evolving business domains
 
 ---
 
-## Key Features
+## Main Concepts
 
-- **Automatic schema evolution**
-- **Virtual primary keys** inferred from inserted data
-- **Cross-references** implemented as foreign keys
-- **N-to-N relationships** via a dedicated system table
-- **Automatic table creation** (`lzdb__N`)
-- **Lazy field addition** (`ALTER TABLE ADD COLUMN`)
-- **Convenience API** (`lzitem`, `lzitems`, `lzdict`, etc.)
+### Collections
+
+Objects with the same structure belong to the same collection.
+
+Example:
+
+```python
+m1 = lzitem(
+    param="2004",
+    starttime="03-jan-2000:00:00:00",
+    endtime="04-jan-2000:00:00:00"
+)
+
+m2 = lzitem(
+    param="2005",
+    starttime="03-jan-2000:00:00:00",
+    endtime="04-jan-2000:00:00:00"
+)
+```
+
+Both objects belong to the same collection because they share the same schema.
+
+### Collection Signatures
+
+lzdb records a collection signature such as:
+
+```text
+endtime,param,starttime
+```
+
+The signature determines collection membership.
+
+It does **not** enforce uniqueness.
+
+### Duplicate Rows
+
+Duplicates are allowed.
+
+```python
+a = lzitem(name="sat1")
+b = lzitem(name="sat1")
+```
+
+Both rows are stored independently.
+
+Object identity is provided by PostgreSQL-generated IDs.
 
 ---
 
 ## Installation
 
-Build using standard Python packaging tools:
+### Install from PyPI
 
 ```bash
-pip install build
+pip install lzdb2
 ```
 
-Then:
+### Build Locally
 
 ```bash
-rm -rf dist
-python3 -m build
+python -m build
 ```
 
-Install the wheel:
+Install:
 
 ```bash
 pip install dist/*.whl
 ```
 
-Force-reinstall for updates:
-
-```bash
-pip install dist/*.whl --force-reinstall --no-deps
-```
-
-Yes, using wildcards. Told ya I'm lazy.
-
 ---
 
-## Foreword: Initializing LZDB
+## Getting Started
 
 ```python
 import psycopg as pg
 from lzdb import *
 
-LZDB.traceon = True  # Optional
-
-dbms = LZDB(
-    pg.connect(
-        dbname='test',
-        host='localhost'
-    ),
-    traceon=True
+conn = pg.connect(
+    dbname="test",
+    host="localhost"
 )
+
+dbms = LZDB(conn)
 ```
 
-### Table Naming
-
-lzdb creates tables named:
-
-```
-lzdb__1
-lzdb__2
-lzdb__3
-...
-```
-
-The `lzdb` inventory table stores:
-
-- the virtual primary key (unique fields)
-- the collection identifier
-- schema metadata
-
-Each table has:
-
-- a real primary key: `id`
-- a virtual primary key: a `UNIQUE` constraint over inferred fields
-
-### Important Note
-
-Nothing is persisted until you call:
+Enable tracing:
 
 ```python
-dbms.commit()
+dbms = LZDB(conn, traceon=True)
 ```
-
-(An `autocommit` may come later.)
 
 ---
 
-## The `lzdb_links` Table
+## Convenience Helpers
 
-Relationships between objects are stored in a dedicated system table:
-
-```sql
-create table if not exists lzdb_links(
-    src_collection integer not null,
-    src_id integer not null,
-
-    dst_collection integer not null,
-    dst_id integer not null,
-
-    reltype smallint not null default 0,
-
-    unique(
-        src_collection,
-        src_id,
-        dst_collection,
-        dst_id,
-        reltype
-    )
-)
-```
-
-This table supports:
-
-- directed relationships
-- undirected relationships
-- N-to-N associations
-- cross-collection links
-
-It is created automatically during `dbms.commit()`.
-
----
-
-## Instantiating a New Item
+Expose shortcuts in the current namespace:
 
 ```python
-item1 = dbms.newItem(
-    param='2004',
-    starttime='03-jan-2000:00:00:00',
-    endtime='04-jan-2000:00:00:00'
-)
+dbms.expose()
 ```
 
-This produces:
+Creates:
 
-```sql
-CREATE TABLE IF NOT EXISTS public.lzdb__1
-(
-    id integer NOT NULL DEFAULT nextval('lzdb__1_id_seq'::regclass),
-    endtime character varying,
-    param character varying,
-    starttime character varying,
-    CONSTRAINT lzdb__1_pkey PRIMARY KEY (id),
-    CONSTRAINT lzdb__1_endtime_param_starttime_key UNIQUE (endtime, param, starttime)
-)
+```text
+lzitem
+lzitems
+lzc
+lzcnames
+dd
+pp
 ```
-
-And inserts into `lzdb`:
-
-- id: 1
-- ukeys: endtime,param,starttime
-
-Any item with the same virtual primary key goes into the same table.
-
----
-
-## Cross-References Between Items
-
-```python
-item2 = dbms.newItem(refers=item1)
-```
-
-This creates a second table:
-
-```sql
-CREATE TABLE IF NOT EXISTS public.lzdb__2
-(
-    id integer NOT NULL DEFAULT nextval('lzdb__2_id_seq'::regclass),
-    refers integer,
-    CONSTRAINT lzdb__2_pkey PRIMARY KEY (id),
-    CONSTRAINT lzdb__2_refers_key UNIQUE (refers),
-    CONSTRAINT lzdb__2_refers_fkey FOREIGN KEY (refers)
-        REFERENCES public.lzdb__1 (id)
-)
-```
-
-Inserted record:
-
-- id: 1
-- refers: 1
-
----
-
-## Cross-Reference vs Relationship
-
-### Cross-reference
-
-```python
-item2 = lzitem(refers=item1)
-```
-
-Characteristics:
-
-- stored as a foreign key
-- modifies the schema
-- part of the object’s definition
-
-### Relationship
-
-```python
-item1.link(item2)
-```
-
-Characteristics:
-
-- stored in `lzdb_links`
-- supports N-to-N
-- does not modify schema
-- ideal for arbitrary associations
-
-**Rule of thumb:**
-Use cross-references for structural relationships.
-Use `link()` for semantic relationships.
-
----
-
-## N-to-N Relationships
 
 Example:
 
 ```python
-items = [
-    lzitem(param='2004', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00'),
-    lzitem(param='2005', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00'),
-    lzitem(param='2006', starttime='03-jan-2000:00:00:00', endtime='04-jan-2000:00:00:00')
-]
+sat = lzitem(name="sat1")
+```
 
-sat = lzitem(name='sat1')
+---
 
-sat.link(items)
+## Creating Objects
 
+```python
+sat = dbms.newItem(
+    name="SAT1"
+)
+```
+
+or:
+
+```python
+sat = lzitem(name="SAT1")
+```
+
+Data is not persisted until:
+
+```python
 dbms.commit()
 ```
 
-Logical relationships:
+---
 
-```
-sat1 --> 2004
-sat1 --> 2005
-sat1 --> 2006
-```
+## ensure()
 
-### Relationship Types
+Retrieve an existing matching object or create one.
 
 ```python
-LZDB.REL_DIRECTED   = 0
-LZDB.REL_UNDIRECTED = 1
+sat = dbms.ensure(name="SAT1")
 ```
 
-Undirected relationships are stored in both directions.
+Behavior:
 
-### Retrieving Linked Items
+```text
+0 matches -> create
+1 match   -> return object
+N matches -> return oldest object
+```
+
+This makes object retrieval deterministic.
+
+---
+
+## Foreign Keys
+
+References to lzdb objects automatically become PostgreSQL foreign keys.
+
+```python
+sat = lzitem(name="SAT1")
+
+measurement = lzitem(
+    satellite=sat,
+    timestamp="2025-01-01"
+)
+```
+
+lzdb automatically creates the FK column and constraint.
+
+After reload:
+
+```python
+measurement["satellite"]
+```
+
+returns the referenced object.
+
+---
+
+## Automatic Schema Evolution
+
+Objects can gain fields after creation.
+
+```python
+sat["operator"] = "ESA"
+sat["launch_year"] = 1998
+```
+
+During commit, lzdb automatically updates the database schema.
+
+No migrations are required.
+
+---
+
+## Links
+
+Foreign keys represent structural relationships.
+
+Links represent semantic relationships.
+
+### Single Link
+
+```python
+sat.link(measurement)
+```
+
+### Multiple Links
+
+```python
+sat.link([
+    measurement1,
+    measurement2,
+    measurement3
+])
+```
+
+Links are stored inside the system table:
+
+```text
+lzdb_links
+```
+
+---
+
+## Relationship Types
+
+```python
+LZDB_REL_DIRECTED
+LZDB_REL_UNDIRECTED
+```
+
+Example:
+
+```python
+sat.link(
+    measurement,
+    LZDB_REL_UNDIRECTED
+)
+```
+
+---
+
+## Retrieving Links
 
 ```python
 for item in dbms.linkedItems(sat):
-    print(item['param'])
-```
-
-Output:
-
-```
-2004
-2005
-2006
+    print(item)
 ```
 
 ---
 
-## Adding Fields to an Item
+## Querying
 
-Two syntaxes:
-
-### Dict-style
+### Retrieve Everything
 
 ```python
-item2['clusters'] = [1,2,3]
-item2['freqmap'] = [4,5,6]
+items = dbms.items()
 ```
 
-### Method-style
+### Filter by Attributes
 
 ```python
-item2.set(
-    clusters=[1,2,3],
-    freqmap=[4,5,6]
+items = dbms.items(
+    param="2004"
 )
 ```
 
-lzdb automatically performs:
+### Filter by Collection
 
-```sql
-ALTER TABLE lzdb__2 ADD COLUMN clusters character varying;
-ALTER TABLE lzdb__2 ADD COLUMN freqmap character varying;
+```python
+items = dbms.items(
+    collection=mycollection
+)
 ```
-
-Record becomes:
-
-- id: 1
-- refers: 1
-- clusters: [1,2,3]
-- freqmap: [4,5,6]
-
-Updates simply modify the row.
 
 ---
 
-## Laziness Helpers: `expose()`
-
-lzdb installs convenience functions:
-
-- `lzitem` → `newItem`
-- `lzc` → `collections`
-- `lzcnames` → `collectionNames`
-- `lzitems` → `items`
-
-Example:
+## Realistic Workflow Example
 
 ```python
-item1 = lzitem(
-    param='2004',
-    starttime='03-jan-2000:00:00:00',
-    endtime='04-jan-2000:00:00:00'
-)
+from lzdb import *
+
+measurements = [
+    lzitem(param="2004"),
+    lzitem(param="2005"),
+    lzitem(param="2006")
+]
+
+sat = lzitem(name="sat1")
+
+sat.link(measurements)
+
+sat["operator"] = "ESA"
+sat["launch_year"] = 1998
+
+dbms.commit()
+
+for item in dbms.linkedItems(sat):
+    print(item)
 ```
 
-### Parquet Loader: `lzdict`
+---
+
+## lzdict
+
+lzdict provides lazy parquet loading.
 
 ```python
 dd = lzdict()
-mydata = dd['PQTFILE']
 ```
 
-This loads any file matching `*PQTFILE*` from `data/`.
-
 ```python
->>> dd.keys()
-dict_keys(['PQTFILE'])
-```
-
-Pretty-print helper:
-
-```python
-pp = pprint.PrettyPrinter().pprint
-```
-
-Example:
-
-```python
->>> items = dbms.items(param='2004')
->>> pp(items)
+data = dd["PQTFILE"]
 ```
 
 ---
 
-## Why Lazy Data Modeling?
+## Persistence Model
 
-For the full conceptual foundation behind lzdb, see **[Why Lazy Data Modeling?](MANIFESTO.md)**.
+Objects exist in one of three states:
+
+1. New
+2. Loaded
+3. Dirty
+
+Dirty objects are automatically updated during commit.
+
+---
+
+## Current Dogma
+
+1. Collections emerge from structure.
+2. IDs define identity.
+3. Duplicate rows are allowed.
+4. References become foreign keys.
+5. Semantic relationships belong in lzdb_links.
+6. Schemas evolve automatically.
+7. Nothing is persisted until commit().
+8. Existing objects may continue to evolve.
+
+---
+
+## Testing
+
+lzdb includes regression tests covering:
+
+- collection creation
+- collection reuse
+- duplicate rows
+- ensure()
+- foreign keys
+- foreign-key reload
+- graph links
+- undirected links
+- persistence
+- schema evolution
+
+Run:
+
+```bash
+pytest -v
+```
 
 ---
 
 ## License
 
-MIT License
-Copyright (c) 2026
+GNU General Public License v3.0 or later (GPL-3.0-or-later).
+
+See the LICENSE file included with the project.
