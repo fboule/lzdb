@@ -1,4 +1,5 @@
 import glob
+import pandas as pd
 
 class lzdict(dict):
     __loader = None
@@ -10,8 +11,7 @@ class lzdict(dict):
                 return None
             filepath = filelist[0]
             filename = filepath.split('_')[0].split('/')[1]
-            if LZDB.traceon:
-                print("Parquet::Get %s" % filename)
+            print("Parquet::Get %s" % filename)
             return pd.read_parquet(filepath)
 
     def __init__(self, loader = None):
