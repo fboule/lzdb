@@ -66,10 +66,6 @@ class LZDBItem(dict):
             self[k] = v
 
     def uniqueDict(self):
-        """
-        Return the virtual PK dictionary.
-        This is used for deduplication and schema grouping.
-        """
         return {k: self[k] for k in self.virtualKeys()}
 
     def collection(self):
@@ -81,20 +77,6 @@ class LZDBItem(dict):
         return self.__id
 
     def virtualKeys(self):
-        """
-        Virtual PK = schema descriptor.
-        These fields determine the table schema,
-        NOT uniqueness constraints.
-        """
-        keys = []
-        for k, v in self.items():
-            if k == "id":
-                continue
-            if k.startswith("refers"):
-                continue
-            if isinstance(v, list):
-                continue
-            keys.append(k)
-        return sorted(keys)
+        self.__collection.uniqueKeys()
 
 
