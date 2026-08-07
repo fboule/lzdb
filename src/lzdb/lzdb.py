@@ -316,7 +316,6 @@ class LZDB(object):
                     collection = coll
                     break
 
-
             # Otherwise create new collection
             if collection is None:
                 collection = Collection(self, ukeys=ukeys, fkeys=fkeys, dbitem=None, tname='')
