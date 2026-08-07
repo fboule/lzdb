@@ -44,11 +44,6 @@ class Collection(object):
         return self.__tname
 
     def uniqueKeys(self):
-        """
-        ADAPTED:
-        uniqueKeys = virtual PK fields (schema signature)
-        NOT real PKs.
-        """
         return self.__ukeys
 
     def read(self, db, id):
@@ -144,7 +139,7 @@ class Collection(object):
                 )
                 continue
 
-            # Normal field → VARCHAR
+            # Normal field -> VARCHAR
             newFields.append(field)
 
         # Add normal fields
