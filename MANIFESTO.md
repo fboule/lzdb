@@ -1,276 +1,171 @@
 # The Lazy Data Modeling Manifesto v1.0
-
 *A founding document for schema-emergent data systems*
 
 ## Preamble
 
 For decades, software systems have been built upon a largely unquestioned assumption:
 
-> Before data can be stored, its structure must be known.
+> **Before data can be stored, its structure must be known.**
 
-This assumption shaped database design, software architecture, project planning, governance, and even the way developers think.
+This assumption shaped database design, software architecture, and even the mental models developers use to understand information. But when exploring new domains, structure is not known in advance — it emerges through observation.
 
-It also created an illusion.
-
-The illusion is that understanding precedes observation.
-
-In reality, understanding is very often the result of observation.
-
-Scientists do not begin with certainty.
-Researchers do not begin with certainty.
-Explorers do not begin with certainty.
-Innovators do not begin with certainty.
-
-They begin with fragments.
-
-They begin with questions.
-
-They begin with incomplete knowledge.
-
-Lazy Data Modeling is founded on the belief that data systems should respect this reality.
+Lazy Data Modeling rejects premature structural commitments. It treats data as empirical evidence and structure as a hypothesis that evolves.
 
 ---
 
-# Article I: The Right To Explore
+## Article I — The Right to Explore
 
-Exploration is not a failure to design.
+Exploration is not a failure to design.  
+It is a legitimate stage of understanding.
 
-Exploration is a legitimate state of knowledge.
-
-The inability to define a schema in advance is not evidence of poor engineering.
-
-It is often evidence that genuine discovery is occurring.
-
-A data system should therefore support exploration rather than punish it.
-
-When uncertainty exists, the burden should fall on the software, not on the user.
+Systems must allow developers to ingest data *before* deciding what the data “is.”  
+Structure should follow insight, not precede it.
 
 ---
 
-# Article II: Data Comes Before Structure
+## Article II — Data Comes Before Structure
 
-Traditional systems say:
+Incoming payloads are observations.  
+They should not be forced into predefined shapes.
 
-> Understand first. Store later.
-
-Lazy Data Modeling says:
-
-> Store first. Understand later.
-
-Data should never be rejected merely because a complete model does not yet exist.
-
-Structure should emerge from experience.
-
-Structure should be earned.
+Schemas are not prerequisites for storage.  
+They are *consequences* of understanding.
 
 ---
 
-# Article III: Schemas Are Theories
+## Article III — Schemas Are Theories
 
-A schema is not truth.
+A schema is a theory about how the world is organized.
 
-A schema is a hypothesis about reality.
-
-Like all hypotheses, schemas should be allowed to evolve when evidence changes.
-
-Systems that make schema evolution difficult are systems that resist learning.
+Like all theories, schemas should be allowed to evolve, refine, or collapse as new evidence arrives.  
+A schema that cannot change is not a model — it is a constraint.
 
 ---
 
-# Article IV: Collections Emerge
+## Article IV — Collections Emerge
 
-Collections must emerge from observation.
+Collections should not be declared upfront.  
+They should emerge from recurring patterns in the data.
 
-A collection is not something declared into existence.
-
-A collection is the recognition that a group of observations share a structure.
-
-Collections therefore become descriptions of reality rather than prescriptions imposed upon reality.
+If items share identity shapes, they belong together.  
+If they diverge, collections should split naturally.
 
 ---
 
-# Article V: Identity And Structure Are Different
+## Article V — Identity and Structure Are Different
 
-One of the most common errors in data modeling is the assumption that identical descriptions imply identical things.
+Identity is not structure.
 
-Reality frequently disagrees.
+Identity answers: *“What makes this item itself?”*  
+Structure answers: *“How is this item organized?”*
 
-Two observations may look identical.
-
-They may still represent different occurrences.
-
-Therefore:
-
-- structure should determine organization
-- identity should determine individuality
-
-Collection membership is structural.
-
-Identity is durable.
-
-Structure groups.
-
-Identity distinguishes.
+Confusing these two leads to brittle systems.
 
 ---
 
-# Article VI: Duplicate Observations Are Not A Defect
+## Article VI — Duplicate Observations Are Not a Defect
 
-Many systems are obsessed with eliminating duplicates.
+Multiple observations of the same entity are not errors.  
+They are evidence.
 
-Lazy Data Modeling recognizes that duplicates often carry meaning.
-
-Two identical observations might represent:
-
-- repetition
-- verification
-- independent measurement
-- coincidence
-- historical record
-
-Data systems should preserve evidence before attempting to interpret it.
+Systems must preserve duplicates until identity can be inferred.  
+Premature deduplication destroys information.
 
 ---
 
-# Article VII: Structural Relationships
-
-Some relationships define what an object is.
-
-These relationships are structural.
-
-Example:
-
-```python
-event = lzitem(
-    satellite=satellite
-)
-```
+## Article VII — Structural Relationships
 
 Structural relationships deserve structural representation.
 
-They become foreign keys.
+If two items consistently reference each other, the system should infer a relationship — even if no foreign key was declared.
+
+These relationships are structural, not semantic.
 
 ---
 
-# Article VIII: Semantic Relationships
+## Article VIII — Semantic Relationships
 
-Not all relationships belong in schemas.
+Semantic relationships belong outside the structural layer.
 
-Some relationships communicate meaning rather than structure.
-
-These are semantic relationships.
-
-Example:
-
-```python
-satellite.link(measurement)
-```
-
-Schemas describe what something is.
-
-Semantic links describe why something matters.
-
-The distinction is essential.
+They are interpretations, not constraints.  
+They should be stored explicitly and separately.
 
 ---
 
-# Article IX: Evolution Is Normal
+## Article IX — Evolution Is Normal
 
-Knowledge evolves.
+Domains evolve.  
+Schemas must evolve with them.
 
-Data systems must evolve with it.
-
-Schema evolution should be treated as a routine consequence of learning.
-
-Not as an operational crisis.
-
-Not as a migration project.
-
-Not as a bureaucratic process.
+A system that treats schema change as an anomaly will resist learning.  
+A system that embraces evolution will reveal structure.
 
 ---
 
-# Article X: Discovery Must Be Cheaper Than Migration
+## Article X — Discovery Must Be Cheaper Than Migration
 
-A system that makes migration easier than discovery has misplaced its priorities.
+Discovery is continuous.  
+Migration should be rare.
 
-Human understanding is the scarce resource.
+If discovering new structure requires expensive manual migrations, the system discourages exploration.
 
-Schema maintenance is not.
-
-Tools should optimize for insight.
-
----
-
-# Article XI: Explicit Persistence
-
-Observations become durable when intentionally committed.
-
-```python
-dbms.commit()
-```
-
-The boundary between thought and permanence should be clear.
+Lazy Data Modeling demands that discovery be cheap.
 
 ---
 
-# Article XII: The Ethics Of Knowledge
+## Article XI — Explicit Persistence
 
-Software is never neutral.
+Systems must distinguish between:
 
-Every tool encodes assumptions.
+- *observations* (incoming payloads), and  
+- *interpretations* (derived structure).
 
-Every workflow privileges certain behaviors.
-
-Lazy Data Modeling chooses to privilege:
-
-- curiosity
-- experimentation
-- revision
-- learning
-- adaptation
-
-Systems should help people understand reality.
-
-Systems should not demand certainty before reality has been observed.
+Both deserve explicit persistence.
 
 ---
 
-# The lzdb Dogma
+## Article XII — The Ethics of Knowledge
 
-1. Collections emerge from structure.
-2. IDs define identity.
-3. Duplicate rows are allowed.
-4. Object references become foreign keys.
-5. Semantic relationships belong in `lzdb_links`.
-6. Schemas evolve automatically.
-7. Persistence occurs only through `commit()`.
-8. Understanding is expected to evolve.
+Premature structure is a form of epistemic overreach.
+
+We must not impose certainty where none exists.  
+We must allow data to speak before we decide what it means.
+
+Lazy Data Modeling is an ethical stance:  
+**understanding should emerge from evidence, not assumption.**
+
+---
+
+# The LZDB Dogma
+
+1. Data precedes structure.  
+2. Identity precedes schema.  
+3. Collections emerge.  
+4. Structure evolves.  
+5. Semantic relationships belong in `lzdb_links`.  
+6. Observations are sacred.  
+7. Migrations are optional.  
+8. Understanding is iterative.  
+9. Structure is a hypothesis.  
+10. Evidence wins.
 
 ---
 
 # A Declaration
 
-We reject the idea that schemas must precede knowledge.
+We declare that data modeling must be inductive, not prescriptive.  
+We declare that schemas must emerge from observation.  
+We declare that exploration is a first-class activity.  
+We declare that premature engineering is harmful.  
+We declare that understanding is a process, not a prerequisite.
 
-We reject the idea that uncertainty is failure.
-
-We reject unnecessary friction between observation and persistence.
-
-We affirm that discovery is a first-class activity.
-
-We affirm that structure should emerge naturally.
-
-We affirm that systems should adapt to understanding.
-
-Let structure follow discovery.
+Lazy Data Modeling is not a technique.  
+It is a philosophy of knowledge.
 
 ---
 
 # License
 
-Copyright (C) 2026 Fabien Bouleau
+This manifesto is released under the GNU Free Documentation License, Version 1.3 (GFDL 1.3), with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
 
-This document is part of the lzdb project.
-
-Licensed under the GNU General Public License v3.0 or later.
+You are free to copy and redistribute this document under the terms of the GFDL.
