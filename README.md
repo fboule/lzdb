@@ -4,94 +4,42 @@
 
 ## Overview
 
-lzdb (Lazy Database) is a Python persistence layer that allows database structure to emerge from the objects being stored.
+`lzdb` (Lazy Database) is a Python persistence engine designed for environments where domain structures are fluid or unknown. Instead of requiring predefined tables, primary keys, foreign keys, and DDL migrations up front, `lzdb` ingests raw objects, evaluates structural similarities at runtime, and allows schemas and relationships to emerge dynamically within PostgreSQL.
 
-Instead of designing tables, foreign keys, and migrations up front, lzdb automatically creates collections, evolves schemas, manages foreign keys, and persists relationships as your application grows.
+The core guiding principle is:
 
-The guiding principle is:
+> **Store first. Model later.**
 
-> Store first. Model later.
+### Primary Use Cases
 
-lzdb is particularly useful for:
-
-- Research projects
-- Scientific data processing
-- Exploratory analytics
-- Rapid prototyping
-- ETL staging systems
-- Knowledge graph applications
-- Evolving business domains
+* **Exploratory Data Analysis & Research:** Persisting heterogeneous telemetry or experimental datasets without manual table creation.
+* **Rapid Prototyping:** Accelerating early-stage software development by eliminating upfront database migrations.
+* **ETL & Data Staging:** Ingesting chaotic third-party API payloads while preserving human-interpretable schemas.
+* **Evolving Knowledge Domains:** Supporting application states where entities gain new attributes and relationships iteratively over time.
 
 ---
 
-## Main Concepts
+## Core Architecture & Concepts
 
-### Collections
-
-Objects with the same structure belong to the same collection.
-
-Example:
-
-```python
-m1 = lzitem(
-    param="2004",
-    starttime="03-jan-2000:00:00:00",
-    endtime="04-jan-2000:00:00:00"
-)
-
-m2 = lzitem(
-    param="2005",
-    starttime="03-jan-2000:00:00:00",
-    endtime="04-jan-2000:00:00:00"
-)
-```
-
-Both objects belong to the same collection because they share the same schema.
-
-### Collection Signatures
-
-lzdb records a collection signature such as:
-
-```text
-endtime,param,starttime
-```
-
-The signature determines collection membership.
-
-It does **not** enforce uniqueness.
-
-### Duplicate Rows
-
-Duplicates are allowed.
-
-```python
-a = lzitem(name="sat1")
-b = lzitem(name="sat1")
-```
-
-Both rows are stored independently.
-
-Object identity is provided by PostgreSQL-generated IDs.
+* **Emergent Collections:** Objects sharing the exact same key topography naturally belong to the same collection. Membership is determined by a generated *collection signature* (e.g., `endtime,param,starttime`).
+* **Non-Enforced Uniqueness:** Structural parity does not imply duplicate rejection. `lzdb` allows duplicate rows and relies on PostgreSQL-generated IDs for physical identity.
+* **Automatic Schema Evolution:** Adding a new key-value pair to a runtime object dynamically expands the target PostgreSQL table on `commit()`.
+* **Structural vs. Semantic Relationships:** Direct object references automatically instantiate PostgreSQL foreign keys. Arbitrary semantic connections are stored as graph edges in `lzdb_links`.
 
 ---
 
 ## Installation
 
-### Install from PyPI
+### Install via PyPI
 
 ```bash
 pip install lzdb2
 ```
 
-### Build Locally
+### Build and Install from Source
 
 ```bash
 python -m build
-```
-
-Install:
-
-```bash
 pip install dist/*.whl
 ```
 
@@ -99,184 +47,127 @@ pip install dist/*.whl
 
 ## Getting Started
 
+### Database Connection & Initialization
+
+`lzdb` wraps a standard `psycopg` connection:
+
 ```python
 import psycopg as pg
-from lzdb import *
+from lzdb import LZDB
 
 conn = pg.connect(
-    dbname="test",
-    host="localhost"
+    dbname="exploratory_db",
+    user="postgres",
+    password="secret",
+    host="localhost",
+    port=5432
 )
 
-dbms = LZDB(conn)
+# Initialize LZDB instance
+dbms = LZDB(conn, traceon=False)
 ```
 
-Enable tracing:
+Enable SQL tracing to monitor dynamic table creation and DDL queries:
 
 ```python
 dbms = LZDB(conn, traceon=True)
 ```
 
----
+### Exposing Namespace Helpers
 
-## Convenience Helpers
-
-Expose shortcuts in the current namespace:
+To streamline script development, expose global helper shortcuts (`lzitem`, `lzitems`, `lzc`, `lzcnames`, `dd`, `pp`) directly into your current namespace:
 
 ```python
 dbms.expose()
-```
 
-Creates:
-
-```text
-lzitem
-lzitems
-lzc
-lzcnames
-dd
-pp
-```
-
-Example:
-
-```python
-sat = lzitem(name="sat1")
+# Now available directly without 'dbms.' prefix
+sat = lzitem(name="SAT-1")
 ```
 
 ---
 
-## Creating Objects
+## Object Management & Persistence
+
+### Creating Objects
+
+Objects can be instantiated via the `LZDB` instance or via global helpers:
 
 ```python
-sat = dbms.newItem(
-    name="SAT1"
-)
+# Via DBMS instance
+sat = dbms.newItem(name="SAT-1", orbit="LEO")
+
+# Via global helper (requires dbms.expose())
+sat = lzitem(name="SAT-1", orbit="LEO")
 ```
 
-or:
-
-```python
-sat = lzitem(name="SAT1")
-```
-
-Data is not persisted until:
+Objects remain in local memory until explicitly persisted:
 
 ```python
 dbms.commit()
 ```
 
----
+### Deterministic Object Retrieval with `ensure()`
 
-## ensure()
-
-Retrieve an existing matching object or create one.
+To prevent unwanted duplicate rows when querying known objects, use `ensure()`. It retrieves an existing record matching the provided key-value pairs or creates one if no match exists:
 
 ```python
-sat = dbms.ensure(name="SAT1")
+# Creates object if missing; returns oldest match if multiple exist
+sat = dbms.ensure(name="SAT-1")
 ```
-
-Behavior:
-
-```text
-0 matches -> create
-1 match   -> return object
-N matches -> return oldest object
-```
-
-This makes object retrieval deterministic.
 
 ---
 
-## Foreign Keys
+## Relationships & Schema Evolution
 
-References to lzdb objects automatically become PostgreSQL foreign keys.
+### Structural Foreign Keys
+
+Passing an `lzdb` object as an attribute value automatically triggers foreign key generation in PostgreSQL:
 
 ```python
-sat = lzitem(name="SAT1")
+sat = lzitem(name="SAT-1")
 
 measurement = lzitem(
     satellite=sat,
-    timestamp="2025-01-01"
+    timestamp="2026-08-09T10:00:00Z",
+    val=42.8
 )
+
+dbms.commit()
 ```
 
-lzdb automatically creates the FK column and constraint.
+When reloaded, `measurement["satellite"]` automatically resolves and returns the referenced `sat` object.
 
-After reload:
+### Schema Evolution
 
-```python
-measurement["satellite"]
-```
-
-returns the referenced object.
-
----
-
-## Automatic Schema Evolution
-
-Objects can gain fields after creation.
+Attributes can be appended dynamically at runtime without executing manual DDL migrations:
 
 ```python
+# Append new fields on the fly
 sat["operator"] = "ESA"
-sat["launch_year"] = 1998
+sat["launch_year"] = 2024
+
+# Automatically alters the underlying PostgreSQL table schema
+dbms.commit()
 ```
 
-During commit, lzdb automatically updates the database schema.
+### Graph & Semantic Links
 
-No migrations are required.
-
----
-
-## Links
-
-Foreign keys represent structural relationships.
-
-Links represent semantic relationships.
-
-### Single Link
+For directed or undirected semantic relationships that exist outside physical table structures, use `.link()`:
 
 ```python
+# Single link
 sat.link(measurement)
+
+# Bulk linking
+sat.link([measurement1, measurement2, measurement3])
+
+# Undirected semantic relationship
+sat.link(measurement, LZDB_REL_UNDIRECTED)
+
+dbms.commit()
 ```
 
-### Multiple Links
-
-```python
-sat.link([
-    measurement1,
-    measurement2,
-    measurement3
-])
-```
-
-Links are stored inside the system table:
-
-```text
-lzdb_links
-```
-
----
-
-## Relationship Types
-
-```python
-LZDB_REL_DIRECTED
-LZDB_REL_UNDIRECTED
-```
-
-Example:
-
-```python
-sat.link(
-    measurement,
-    LZDB_REL_UNDIRECTED
-)
-```
-
----
-
-## Retrieving Links
+Semantic links are stored in the reserved system table `lzdb_links`. Query connected items using:
 
 ```python
 for item in dbms.linkedItems(sat):
@@ -287,151 +178,103 @@ for item in dbms.linkedItems(sat):
 
 ## Querying
 
-### Retrieve Everything
+`lzdb` provides a unified query interface across inferred collections:
 
 ```python
-items = dbms.items()
-```
+# Retrieve all stored items across all collections
+all_items = dbms.items()
 
-### Filter by Attributes
+# Filter by exact attribute values
+sensor_data = dbms.items(param="2004")
 
-```python
-items = dbms.items(
-    param="2004"
-)
-```
-
-### Filter by Collection
-
-```python
-items = dbms.items(
-    collection=mycollection
-)
+# Filter by target collection reference
+collection_items = dbms.items(collection=my_collection)
 ```
 
 ---
 
-## Realistic Workflow Example
+## Lazy Parquet Integration (`lzdict`)
 
-```python
-from lzdb import *
-
-measurements = [
-    lzitem(param="2004"),
-    lzitem(param="2005"),
-    lzitem(param="2006")
-]
-
-sat = lzitem(name="sat1")
-
-sat.link(measurements)
-
-sat["operator"] = "ESA"
-sat["launch_year"] = 1998
-
-dbms.commit()
-
-for item in dbms.linkedItems(sat):
-    print(item)
-```
-
----
-
-## lzdict
-
-lzdict provides lazy parquet loading.
+For large analytical files, `lzdict` provides lazy-loading wrappers around local Parquet storage:
 
 ```python
 dd = lzdict()
+
+# Loads and parses Parquet file contents on access
+df = dd["PQTFILE"]
 ```
+
+---
+
+## The Lazy Data Modeling Dogma
+
+1. **Data precedes structure:** Payloads are empirical evidence, not conformance checks.
+2. **IDs define physical identity:** System-assigned keys separate identity from structural layout.
+3. **Duplicate rows are valid:** Observations are preserved prior to statistical deduplication.
+4. **Object references become foreign keys:** Structural dependencies create schema constraints automatically.
+5. **Semantic relationships belong in `lzdb_links`:** Graph linkages remain decoupled from tabular column definitions.
+6. **Schemas evolve automatically:** Table shapes adapt inductively as fields are appended.
+7. **Explicit persistence:** State changes require an explicit `commit()` call.
+8. **Evolving history:** Existing objects and collection structures remain adaptable as understanding grows.
+
+---
+
+## Complete Workflow Example
 
 ```python
-data = dd["PQTFILE"]
+import psycopg as pg
+from lzdb import LZDB
+
+# 1. Connect and initialize
+conn = pg.connect(dbname="test_db", host="localhost")
+dbms = LZDB(conn)
+dbms.expose()
+
+# 2. Ingest structured payloads
+measurements = [
+    lzitem(param="2004", val=10.1),
+    lzitem(param="2005", val=12.4),
+    lzitem(param="2006", val=11.8)
+]
+
+sat = lzitem(name="SAT-1")
+
+# 3. Create semantic graph links
+sat.link(measurements)
+
+# 4. Evolve item schema dynamically
+sat["operator"] = "ESA"
+sat["status"] = "ACTIVE"
+
+# 5. Persist to PostgreSQL
+dbms.commit()
+
+# 6. Traversal
+print(f"Satellite: {sat['name']} ({sat['operator']})")
+print("Linked Measurements:")
+for item in dbms.linkedItems(sat):
+    print(f" - Param: {item['param']}, Val: {item['val']}")
 ```
-
----
-
-## Persistence Model
-
-Objects exist in one of three states:
-
-1. New
-2. Loaded
-3. Dirty
-
-Dirty objects are automatically updated during commit.
-
----
-
-## Current Dogma
-
-1. Collections emerge from structure.
-2. IDs define identity.
-3. Duplicate rows are allowed.
-4. References become foreign keys.
-5. Semantic relationships belong in lzdb_links.
-6. Schemas evolve automatically.
-7. Nothing is persisted until commit().
-8. Existing objects may continue to evolve.
 
 ---
 
 ## Testing
 
-lzdb includes regression tests covering:
-
-- collection creation
-- collection reuse
-- duplicate rows
-- ensure()
-- foreign keys
-- foreign-key reload
-- graph links
-- undirected links
-- persistence
-- schema evolution
-
-Run:
+Run the full regression test suite using `pytest`:
 
 ```bash
 pytest -v
 ```
 
----
-
-# Manifesto
-
-lzdb is more than a persistence layer. It is an experiment in **Lazy Data Modeling**.
-
-Traditional data modeling assumes that the structure of the data must be understood before the data can be stored.
-
-lzdb challenges that assumption.
-
-Instead of designing schemas, foreign keys, constraints, and migrations upfront, lzdb encourages:
-
-- storing first
-- observing actual usage
-- allowing collections to emerge naturally
-- evolving structure incrementally
-- separating structural relationships from semantic relationships
-
-For the complete rationale and philosophy behind the project, see:
-
-[MANIFESTO.md](MANIFESTO.md)
-
-The manifesto discusses:
-
-- why schemas should emerge from data
-- why duplication is not always the enemy
-- collection signatures
-- structural versus semantic relationships
-- exploratory database design
-- the principles of Lazy Data Modeling
+The test suite validates:
+* Collection creation and signature matching
+* Foreign key creation and auto-reloading
+* Single and bulk semantic link traversals (directed/undirected)
+* Automatic table schema evolution on `commit()`
+* Deterministic behavior of `ensure()`
 
 ---
 
 ## License
 
-GNU General Public License v3.0 or later (GPL-3.0-or-later).
-
-See the LICENSE file included with the project.
+Distributed under the **GNU General Public License v3.0 or later (GPL-3.0-or-later)**. See `LICENSE` for full details.
