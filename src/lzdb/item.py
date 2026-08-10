@@ -77,6 +77,9 @@ class LZDBItem(dict):
         return self.__id
 
     def virtualKeys(self):
-        self.__collection.uniqueKeys()
+        if self.__collection is None:
+            return sorted(list(self.keys()))
+        else:
+            return self.__collection.uniqueKeys()
 
 
