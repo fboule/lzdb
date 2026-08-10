@@ -100,7 +100,7 @@ class LZDB(object):
         g = inspect.currentframe().f_back.f_globals
 
         g.update({
-            'lzitem': self.newItem,
+            'lzitem': self.ensure,
             'lzitems': self.items,
             'lzc': self.collections,
             'lzcnames': self.collectionsNames,
