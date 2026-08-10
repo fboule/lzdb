@@ -6,8 +6,7 @@ class LZDBItem(dict):
 
         self.__collection = collection
         self.__id = None
-        self.__loaded = False
-        self.__dirty = True
+        self.__dirty = False
 
         self.__links = []
 
@@ -35,12 +34,6 @@ class LZDBItem(dict):
                 result[field] = value.collection()
 
         return result
-
-    def markLoaded(self):
-        self.__loaded = True
-
-    def isLoaded(self):
-        return self.__loaded
 
     def fields(self):
         return list(self.keys())
@@ -73,10 +66,6 @@ class LZDBItem(dict):
             self[k] = v
 
     def uniqueDict(self):
-        """
-        Return the virtual PK dictionary.
-        This is used for deduplication and schema grouping.
-        """
         return {k: self[k] for k in self.virtualKeys()}
 
     def collection(self):
@@ -88,20 +77,9 @@ class LZDBItem(dict):
         return self.__id
 
     def virtualKeys(self):
-        """
-        Virtual PK = schema descriptor.
-        These fields determine the table schema,
-        NOT uniqueness constraints.
-        """
-        keys = []
-        for k, v in self.items():
-            if k == "id":
-                continue
-            if k.startswith("refers"):
-                continue
-            if isinstance(v, list):
-                continue
-            keys.append(k)
-        return sorted(keys)
+        if self.__collection is None:
+            return sorted(list(self.keys()))
+        else:
+            return self.__collection.uniqueKeys()
 
 

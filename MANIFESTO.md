@@ -1,197 +1,171 @@
-# Lazy Data Manifesto
-*A declaration for schema-emergent data systems*
+# The Lazy Data Modeling Manifesto v1.0
+*A founding document for schema-emergent data systems*
 
-## 1. Introduction
+## Preamble
 
-Modern databases assume that structure is known in advance.
-They require schemas, migrations, and predefined relationships before any meaningful data exists.
-This assumption is convenient for mature domains — but destructive for exploratory work.
+For decades, software systems have been built upon a largely unquestioned assumption:
 
-Research, prototyping, and early-stage discovery do not begin with certainty.
-They begin with **questions**, **partial understanding**, and **messy data**.
+> **Before data can be stored, its structure must be known.**
 
-Yet traditional systems punish this natural uncertainty.
-They force premature decisions, embed early misconceptions into rigid schemas, and interrupt discovery with migrations.
+This assumption shaped database design, software architecture, and even the mental models developers use to understand information. But when exploring new domains, structure is not known in advance — it emerges through observation.
 
-**Lazy Data Modeling** exists to challenge this paradigm.
-
-It asserts that:
-
-- exploration is a legitimate state of knowledge
-- structure should follow discovery
-- tools must adapt to the researcher, not the other way around
-
-lzdb is the reference implementation of this philosophy.
+Lazy Data Modeling rejects premature structural commitments. It treats data as empirical evidence and structure as a hypothesis that evolves.
 
 ---
 
-## 2. The Problem: Premature Structure
+## Article I — The Right to Explore
 
-Schema-first design creates friction at every stage of exploratory work:
+Exploration is not a failure to design.  
+It is a legitimate stage of understanding.
 
-- You must guess the schema before understanding the phenomenon.
-- You must perform migrations every time your understanding evolves.
-- You must encode early misconceptions into the data model.
-- You must treat uncertainty as an error instead of a natural part of discovery.
-
-This friction is not incidental — it is structural.
-It is baked into the design of traditional databases.
-
-Lazy Data Modeling rejects this constraint.
+Systems must allow developers to ingest data *before* deciding what the data “is.”  
+Structure should follow insight, not precede it.
 
 ---
 
-## 3. The Vision: Schema Emergence
+## Article II — Data Comes Before Structure
 
-Lazy Data Modeling proposes a simple idea:
+Incoming payloads are observations.  
+They should not be forced into predefined shapes.
 
-> **Let the data arrive first. Let the structure emerge later.**
-
-lzdb embodies this idea by:
-
-- creating tables automatically
-- inferring virtual primary keys from inserted data
-- evolving schemas lazily as new fields appear
-- supporting cross-references without upfront design
-- supporting N-to-N relationships without schema changes
-- storing relationships in a dedicated system table
-- committing changes only when explicitly requested
-
-Structure becomes a *reflection* of understanding, not a prerequisite for it.
+Schemas are not prerequisites for storage.  
+They are *consequences* of understanding.
 
 ---
 
-## 4. The Ethical Argument: Freedom to Explore
+## Article III — Schemas Are Theories
 
-Premature structure is a form of coercion.
-It forces the researcher to commit to assumptions they may not yet believe.
+A schema is a theory about how the world is organized.
 
-Lazy Data Modeling defends the researcher’s right to:
-
-- store data without knowing its meaning
-- revise understanding without migrations
-- let relationships emerge organically
-- treat structure as a product of insight
-
-Exploration should not be punished.
-Curiosity should not be expensive.
+Like all theories, schemas should be allowed to evolve, refine, or collapse as new evidence arrives.  
+A schema that cannot change is not a model — it is a constraint.
 
 ---
 
-## 5. The Method: How Lazy Data Works
+## Article IV — Collections Emerge
 
-Lazy Data Modeling is built on five principles:
+Collections should not be declared upfront.  
+They should emerge from recurring patterns in the data.
 
-### 1. Data first, structure later
-Store now. Understand later.
-lzdb creates tables only when needed and infers uniqueness from actual data.
-
-### 2. Exploration is a valid state of knowledge
-Uncertainty is not a defect.
-lzdb allows incomplete, evolving, and heterogeneous data.
-
-### 3. Relationships emerge through use
-Cross-references become foreign keys.
-Associations become entries in `lzdb_links`.
-
-### 4. Friction is the enemy of insight
-Migrations interrupt discovery.
-lzdb evolves schemas lazily and automatically.
-
-### 5. Structure follows discovery
-Models should reflect understanding, not precede it.
+If items share identity shapes, they belong together.  
+If they diverge, collections should split naturally.
 
 ---
 
-## 6. The Tool: lzdb
+## Article V — Identity and Structure Are Different
 
-lzdb demonstrates Lazy Data Modeling through:
+Identity is not structure.
 
-### Automatic Table Creation
-Each new virtual primary key creates a new table:
+Identity answers: *“What makes this item itself?”*  
+Structure answers: *“How is this item organized?”*
 
-```
-lzdb__1
-lzdb__2
-lzdb__3
-...
-```
-
-The `lzdb` inventory table tracks:
-
-- collection identifiers
-- virtual primary keys
-- schema metadata
-
-### Virtual Primary Keys
-lzdb infers uniqueness from the fields provided during item creation.
-
-Example:
-
-```python
-item = dbms.newItem(param='2004', starttime='03-jan-2000', endtime='04-jan-2000')
-```
-
-Creates a table with:
-
-```
-UNIQUE (endtime, param, starttime)
-```
-
-### Cross-References
-```python
-item2 = dbms.newItem(refers=item1)
-```
-
-Creates a foreign key relationship automatically.
-
-### N-to-N Relationships
-```python
-item1.link(item2)
-```
-
-Stored in `lzdb_links`, without modifying any schema.
-
-### Lazy Field Addition
-```python
-item['clusters'] = [1,2,3]
-```
-
-Triggers:
-
-```
-ALTER TABLE ADD COLUMN clusters
-```
-
-### Explicit Persistence
-Nothing is committed until:
-
-```python
-dbms.commit()
-```
-
-This preserves the exploratory workflow.
+Confusing these two leads to brittle systems.
 
 ---
 
-## 7. The Call to Action
+## Article VI — Duplicate Observations Are Not a Defect
 
-Lazy Data Modeling is an invitation to rethink how we structure data.
+Multiple observations of the same entity are not errors.  
+They are evidence.
 
-It calls for tools that:
+Systems must preserve duplicates until identity can be inferred.  
+Premature deduplication destroys information.
 
-- respect uncertainty
-- embrace exploration
-- evolve with understanding
-- remove friction from discovery
+---
 
-lzdb is not the final word — it is the beginning of a movement.
+## Article VII — Structural Relationships
 
-A movement toward **schema-emergent data systems**.
-A movement toward **tools that adapt to thought**.
-A movement toward **freedom in exploration**.
+Structural relationships deserve structural representation.
 
-Join the movement.
-Challenge schema-first assumptions.
-Let structure follow discovery.
+If two items consistently reference each other, the system should infer a relationship — even if no foreign key was declared.
 
+These relationships are structural, not semantic.
+
+---
+
+## Article VIII — Semantic Relationships
+
+Semantic relationships belong outside the structural layer.
+
+They are interpretations, not constraints.  
+They should be stored explicitly and separately.
+
+---
+
+## Article IX — Evolution Is Normal
+
+Domains evolve.  
+Schemas must evolve with them.
+
+A system that treats schema change as an anomaly will resist learning.  
+A system that embraces evolution will reveal structure.
+
+---
+
+## Article X — Discovery Must Be Cheaper Than Migration
+
+Discovery is continuous.  
+Migration should be rare.
+
+If discovering new structure requires expensive manual migrations, the system discourages exploration.
+
+Lazy Data Modeling demands that discovery be cheap.
+
+---
+
+## Article XI — Explicit Persistence
+
+Systems must distinguish between:
+
+- *observations* (incoming payloads), and  
+- *interpretations* (derived structure).
+
+Both deserve explicit persistence.
+
+---
+
+## Article XII — The Ethics of Knowledge
+
+Premature structure is a form of epistemic overreach.
+
+We must not impose certainty where none exists.  
+We must allow data to speak before we decide what it means.
+
+Lazy Data Modeling is an ethical stance:  
+**understanding should emerge from evidence, not assumption.**
+
+---
+
+# The LZDB Dogma
+
+1. Data precedes structure.  
+2. Identity precedes schema.  
+3. Collections emerge.  
+4. Structure evolves.  
+5. Semantic relationships belong in `lzdb_links`.  
+6. Observations are sacred.  
+7. Migrations are optional.  
+8. Understanding is iterative.  
+9. Structure is a hypothesis.  
+10. Evidence wins.
+
+---
+
+# A Declaration
+
+We declare that data modeling must be inductive, not prescriptive.  
+We declare that schemas must emerge from observation.  
+We declare that exploration is a first-class activity.  
+We declare that premature engineering is harmful.  
+We declare that understanding is a process, not a prerequisite.
+
+Lazy Data Modeling is not a technique.  
+It is a philosophy of knowledge.
+
+---
+
+# License
+
+This manifesto is released under the GNU Free Documentation License, Version 1.3 (GFDL 1.3), with no Invariant Sections, no Front-Cover Texts, and no Back-Cover Texts.
+
+You are free to copy and redistribute this document under the terms of the GFDL.

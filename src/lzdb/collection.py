@@ -44,11 +44,6 @@ class Collection(object):
         return self.__tname
 
     def uniqueKeys(self):
-        """
-        ADAPTED:
-        uniqueKeys = virtual PK fields (schema signature)
-        NOT real PKs.
-        """
         return self.__ukeys
 
     def read(self, db, id):
@@ -88,15 +83,14 @@ class Collection(object):
             for field in self.__fkeys:
                 obj[field] = items[field]
 
-            dbitem = self.__dbms.newItem(collection=self, __loading = True, **obj)
+            dbitem = self.__dbms.newItem(collection=self, **obj)
             dbitem.id(items['id'])
-            dbitem.markLoaded()
 
             for field in items:
                 if field not in (self.__ukeys or []):
                     dbitem[field] = items[field]
-                    dbitem.markLoaded()
-                    dbitem.clearDirty()
+
+            dbitem.clearDirty()
 
     def read_fkeys(self, db, id):
         s = """SELECT 
@@ -145,7 +139,7 @@ class Collection(object):
                 )
                 continue
 
-            # Normal field → VARCHAR
+            # Normal field -> VARCHAR
             newFields.append(field)
 
         # Add normal fields

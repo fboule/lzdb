@@ -19,9 +19,6 @@
 #
 ################################################################################
 
-import datetime
-import pandas as pd
-import pprint
 import getpass
 
 from .constants import *
@@ -103,7 +100,7 @@ class LZDB(object):
         g = inspect.currentframe().f_back.f_globals
 
         g.update({
-            'lzitem': self.newItem,
+            'lzitem': self.ensure,
             'lzitems': self.items,
             'lzc': self.collections,
             'lzcnames': self.collectionsNames,
@@ -189,7 +186,7 @@ class LZDB(object):
         # ------------------------------------------------------------------
         # UPDATE existing row
         # ------------------------------------------------------------------
-        if dbitem.isLoaded():
+        if dbitem.id() is not None:
 
             if len(fields) > 0:
 
@@ -243,7 +240,6 @@ class LZDB(object):
         if res is not None:
             dbitem.id(res[0])
 
-        dbitem.markLoaded()
         dbitem.clearDirty()
 
     def __saveItems(self):
@@ -306,7 +302,7 @@ class LZDB(object):
                         reltype
                     )
 
-    def newItem(self, collection=None, id=None, __loading=False, **refs):
+    def newItem(self, collection=None, id=None, **refs):
         # If no collection provided, derive one from virtual PK
         if collection is None:
             temp = LZDBItem(None, **refs)
@@ -319,7 +315,6 @@ class LZDB(object):
                 if coll.uniqueKeys() == ukeys:
                     collection = coll
                     break
-
 
             # Otherwise create new collection
             if collection is None:
