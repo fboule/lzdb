@@ -9,6 +9,9 @@ class CollectionStats:
     def __init__(self):
         self.fields = {}   # field_name -> FieldStats
 
+    def reset(self):
+        self.fields = {}   # field_name -> FieldStats
+
     # ------------------------------------------------------------
     # Update stats from a new item
     # ------------------------------------------------------------
