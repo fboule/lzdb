@@ -29,7 +29,7 @@ class Collection(object):
         if dbitem is not None:
             # IMPORTANT:
             # virtualKeys() define schema, NOT uniqueness
-            self.__ukeys = dbitem.virtualKeys()
+            self.__ukeys = dbitem.virtualKeys
             self.__fields.extend(self.__ukeys)
 
         # Add FK fields to schema
@@ -37,6 +37,7 @@ class Collection(object):
             if field not in self.__fields:
                 self.__fields.append(field)
 
+    @property
     def id(self):
         return self.__id
 
@@ -45,8 +46,18 @@ class Collection(object):
             self.__tname = tname
         return self.__tname
 
+    def extendUniqueKeys(self, ukeys):
+        if self.__ukeys is None or ukeys is None:
+            return None
+        if set(ukeys).issubset(self.__fields):
+            self.__ukeys = sorted(set(self.__ukeys).union(ukeys))
+        return tuple(self.__ukeys)
+
+    @property
     def uniqueKeys(self):
-        return self.__ukeys
+        if self.__ukeys is None:
+            return None
+        return tuple(self.__ukeys)
 
     def read(self, db, id):
         self.__id = id
@@ -58,9 +69,9 @@ class Collection(object):
         if self.__dbms.traceon:
             tname = f" as '{self.__tname}'" if self.__tname else ""
             if len(self.__fkeys) == 0:
-                print(f"Found {rows.rowcount} rows in {id}({','.join(self.__ukeys)}){tname}")
+                print(f"Found {rows.rowcount} rows in {id}({','.join(self.uniqueKeys or [])}){tname}")
             else:
-                print(f"Found {rows.rowcount} rows in {id}({','.join(self.__ukeys)}){tname} with references:")
+                print(f"Found {rows.rowcount} rows in {id}({','.join(self.uniqueKeys or [])}){tname} with references:")
                 for name, collection in self.__fkeys.items():
                     print(f"  {name} to {collection.id()}")
 
@@ -79,7 +90,7 @@ class Collection(object):
 
             obj = {}
 
-            for field in (self.__ukeys or []):
+            for field in (self.uniqueKeys or []):
                 obj[field] = items[field]
 
             for field in self.__fkeys:
@@ -89,7 +100,7 @@ class Collection(object):
             dbitem.id(items['id'])
 
             for field in items:
-                if field not in (self.__ukeys or []):
+                if field not in (self.uniqueKeys or []):
                     dbitem[field] = items[field]
 
             dbitem.clearDirty()
@@ -127,7 +138,7 @@ class Collection(object):
 
         newFields = []
 
-        for field in dbitem.fields():
+        for field in dbitem.fields:
             if field in existing:
                 continue
 
@@ -137,7 +148,7 @@ class Collection(object):
             if isinstance(value, LZDBItem):
                 db.execute(
                     f"ALTER TABLE {self.__id} "
-                    f"ADD COLUMN {field} INTEGER REFERENCES {value.collection().id()}"
+                    f"ADD COLUMN {field} INTEGER REFERENCES {value.collection.id}"
                 )
                 continue
 
@@ -155,7 +166,7 @@ class Collection(object):
             return
 
         # Register this collection in the inventory table
-        ukeys = ",".join(self.uniqueKeys() or [])
+        ukeys = ",".join(self.uniqueKeys or [])
         tname = self.name() if hasattr(self, "name") else ""
 
         db.execute(
@@ -163,7 +174,9 @@ class Collection(object):
             INSERT INTO lzdb(ukeys, tname)
             VALUES (%s, %s)
             ON CONFLICT (ukeys)
-            DO UPDATE SET tname = EXCLUDED.tname
+            DO UPDATE SET
+                ukeys = EXCLUDED.ukeys,
+                tname = EXCLUDED.tname
             RETURNING id
             """,
             (ukeys, tname),
@@ -176,10 +189,10 @@ class Collection(object):
 
         # Foreign keys
         for k, collection in self.__fkeys.items():
-            fk = f"{k} INTEGER REFERENCES {collection.id()}"
+            fk = f"{k} INTEGER REFERENCES {collection.id}"
             s += f", {fk}"
 
-        fields = self.uniqueKeys() or []
+        fields = self.uniqueKeys or []
         data_fields = [f"{x} VARCHAR" for x in fields if x not in self.__fkeys]
         if data_fields:
             s += ", " + ", ".join(data_fields)

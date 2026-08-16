@@ -23,23 +23,25 @@ class LZDBItem(dict):
     def clearDirty(self):
         self.__dirty = False
 
+    @property
     def isDirty(self):
         return self.__dirty
 
+    @property
     def foreignKeys(self):
         result = {}
 
         for field, value in self.items():
             if isinstance(value, LZDBItem):
-                result[field] = value.collection()
+                result[field] = value.collection
 
         return result
 
+    @property
     def fields(self):
-        return list(self.keys())
+        return tuple(self.keys())
 
     def link(self, item, reltype=None):
-
         if reltype is None:
             reltype = LZDB_REL_DIRECTED
 
@@ -55,8 +57,9 @@ class LZDBItem(dict):
             "reltype": reltype
         })
 
+    @property
     def links(self):
-        return self.__links
+        return tuple(self.__links)
 
     def set(self, **kwargs):
         """
@@ -65,21 +68,26 @@ class LZDBItem(dict):
         for k, v in kwargs.items():
             self[k] = v
 
+    @property
     def uniqueDict(self):
-        return {k: self[k] for k in self.virtualKeys()}
+        return {k: self[k] for k in self.virtualKeys}
 
+    @property
     def collection(self):
         return self.__collection
 
-    def id(self, value=None):
-        if value is not None:
-            self.__id = value
+    @property
+    def id(self):
         return self.__id
 
+    @id.setter
+    def id(self, value):
+        self.__id = value
+
+    @property
     def virtualKeys(self):
         if self.__collection is None:
-            return sorted(list(self.keys()))
-        else:
-            return self.__collection.uniqueKeys()
+            return ()
+        return self.__collection.uniqueKeys
 
 
