@@ -2,7 +2,6 @@ import datetime
 
 from .constants import *
 from .item import LZDBItem
-from .collectionstats import CollectionStats
 
 class Collection(object):
     __id = None
@@ -10,7 +9,6 @@ class Collection(object):
     __fkeys = None
     __fields = None
     __dbms = None
-    __stats = None
     __tname = ''
 
     def __init__(self, dbms, ukeys=None, fkeys={}, dbitem=None, tname=''):
@@ -19,7 +17,6 @@ class Collection(object):
 
         self.__fields = []
         self.__fkeys = {}
-        self.__stats = CollectionStats()
 
         if ukeys is not None:
             self.__ukeys = sorted(ukeys)
@@ -187,6 +184,3 @@ class Collection(object):
         s += ");"
 
         db.execute(s)
-
-    def stats(self):
-        return self.__stats
