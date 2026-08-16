@@ -247,7 +247,7 @@ def test_reload_persists_fk():
             item.collection.id == event_collection
             and item.id == event_id
         ):
-            reloaded_event = item[0]
+            reloaded_event = item
             break
 
     assert reloaded_event is not None
