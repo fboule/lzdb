@@ -1,3 +1,4 @@
+import math
 from .fieldstats import FieldStats
 
 class CollectionStats:
@@ -65,12 +66,10 @@ class CollectionStats:
             p = self.presence(fs)
             u = self.uniqueness(fs)
             s = self.stability(fs)
+            imb = self.cluster_imbalance(fs)
+            H = self.entropy(fs)
 
-            if (
-                p >= 0.8 and
-                0.05 <= u <= 0.95 and
-                s >= 0.9
-            ):
+            if (p >= 0.8 and 0.05 <= u <= 0.95 and s >= 0.9 and imb <= 0.9 and H >= 0.5):
                 candidates.append(fname)
 
         return sorted(candidates)
@@ -88,3 +87,26 @@ class CollectionStats:
             self.collection.extendUniqueKeys(merged)
 
         return self.collection.uniqueKeys
+
+    # ------------------------------------------------------------
+    # Imbalance calculation
+    # ------------------------------------------------------------
+    def cluster_imbalance(self, fs):
+        if fs.count_present == 0:
+            return 1.0
+        largest = max(fs.value_counts.values())
+        return largest / fs.count_present
+
+    # ------------------------------------------------------------
+    # Entropy calculation
+    # ------------------------------------------------------------
+    def entropy(self, fs):
+        total = fs.count_present
+        if total == 0:
+            return 0.0
+
+        H = 0.0
+        for count in fs.value_counts.values():
+            p = count / total
+            H -= p * math.log(p)
+        return H
