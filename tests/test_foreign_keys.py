@@ -40,7 +40,7 @@ def test_fk_column_creation():
     cur.execute(f"""
         SELECT column_name
         FROM information_schema.columns
-        WHERE table_name = '{event.collection().id()}'
+        WHERE table_name = '{event.collection.id}'
     """)
 
     columns = {row[0] for row in cur.fetchall()}
@@ -71,12 +71,12 @@ def test_fk_constraint_creation():
         JOIN information_schema.constraint_column_usage ccu
           ON ccu.constraint_name = tc.constraint_name
         WHERE tc.constraint_type = 'FOREIGN KEY'
-          AND tc.table_name = '{event.collection().id()}'
+          AND tc.table_name = '{event.collection.id}'
     """)
 
     fks = cur.fetchall()
 
-    assert ("satellite", satellite.collection().id()) in fks
+    assert ("satellite", satellite.collection.id) in fks
 
 def test_fk_value_storage():
     dbms = fresh_db()
@@ -94,13 +94,13 @@ def test_fk_value_storage():
 
     cur.execute(f"""
         SELECT satellite
-        FROM {event.collection().id()}
-        WHERE id = {event.id()}
+        FROM {event.collection.id}
+        WHERE id = {event.id}
     """)
 
     fk_value = cur.fetchone()[0]
 
-    assert fk_value == satellite.id()
+    assert fk_value == satellite.id
 
 def test_reload_persists_fk():
     dbms = fresh_db()
@@ -116,10 +116,10 @@ def test_reload_persists_fk():
 
     dbms.commit()
 
-    event_id = event.id()
-    event_collection = event.collection().id()
+    event_id = event.id
+    event_collection = event.collection.id
 
-    satellite_id = sat.id()
+    satellite_id = sat.id
 
     dbms2 = LZDB(dbms.conn)
 
@@ -127,8 +127,8 @@ def test_reload_persists_fk():
 
     for item in dbms2.items():
         if (
-            item.collection().id() == event_collection
-            and item.id() == event_id
+            item.collection.id == event_collection
+            and item.id == event_id
         ):
             reloaded_event = item
             break
@@ -136,7 +136,7 @@ def test_reload_persists_fk():
     assert reloaded_event is not None
     assert "satellite" in reloaded_event
     assert reloaded_event["satellite"] is not None
-    assert reloaded_event["satellite"].id() == satellite_id
+    assert reloaded_event["satellite"].id == satellite_id
 
 def test_reload_preserves_fk_relationship():
     dbms = fresh_db()
@@ -152,8 +152,8 @@ def test_reload_preserves_fk_relationship():
 
     dbms.commit()
 
-    satellite_id = sat.id()
-    event_id = event.id()
+    satellite_id = sat.id
+    event_id = event.id
 
     dbms2 = LZDB(dbms.conn)
 
@@ -162,16 +162,16 @@ def test_reload_preserves_fk_relationship():
 
     for item in dbms2.items():
 
-        if item.id() == satellite_id:
+        if item.id == satellite_id:
             satellite = item
 
-        if item.id() == event_id:
+        if item.id == event_id:
             event = item
 
     assert satellite is not None
     assert event is not None
 
-    assert event["satellite"] is satellite
+    assert event["satellite"][0] is satellite
 
 def test_fk_added_after_object_creation():
     dbms = fresh_db()
@@ -197,7 +197,7 @@ def test_fk_added_after_object_creation():
     cur.execute(f"""
         SELECT column_name
         FROM information_schema.columns
-        WHERE table_name = '{event.collection().id()}'
+        WHERE table_name = '{event.collection.id}'
     """)
 
     columns = {row[0] for row in cur.fetchall()}
@@ -207,14 +207,14 @@ def test_fk_added_after_object_creation():
     # Verify FK value stored
     cur.execute(f"""
         SELECT satellite
-        FROM {event.collection().id()}
-        WHERE id = {event.id()}
+        FROM {event.collection.id}
+        WHERE id = {event.id}
     """)
 
     row = cur.fetchone()
 
     assert row is not None
-    assert row[0] == sat.id()
+    assert row[0] == sat.id
 
 def test_reload_persists_fk():
     """
@@ -233,9 +233,9 @@ def test_reload_persists_fk():
 
     dbms.commit()
 
-    event_id = event.id()
-    event_collection = event.collection().id()
-    satellite_id = sat.id()
+    event_id = event.id
+    event_collection = event.collection.id
+    satellite_id = sat.id
 
     # Simulate application restart
     dbms2 = LZDB(dbms.conn)
@@ -244,13 +244,13 @@ def test_reload_persists_fk():
 
     for item in dbms2.items():
         if (
-            item.collection().id() == event_collection
-            and item.id() == event_id
+            item.collection.id == event_collection
+            and item.id == event_id
         ):
-            reloaded_event = item
+            reloaded_event = item[0]
             break
 
     assert reloaded_event is not None
     assert "satellite" in reloaded_event
     assert reloaded_event["satellite"] is not None
-    assert reloaded_event["satellite"].id() == satellite_id
+    assert reloaded_event["satellite"][0].id == satellite_id

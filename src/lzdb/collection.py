@@ -15,24 +15,18 @@ class Collection(object):
         self.__dbms = dbms
         self.__tname = tname
 
-        # Initialize fields
         self.__fields = []
         self.__fkeys = {}
 
-        # CASE 1: Collection created from virtual PK signature
         if ukeys is not None:
             self.__ukeys = sorted(ukeys)
             self.__fields.extend(self.__ukeys)
-            self.__fkeys = fkeys
+            self.__fkeys = fkeys or {}
 
-        # CASE 2: Collection created from dbitem (loading from DB)
         if dbitem is not None:
-            # IMPORTANT:
-            # virtualKeys() define schema, NOT uniqueness
             self.__ukeys = dbitem.virtualKeys
             self.__fields.extend(self.__ukeys)
 
-        # Add FK fields to schema
         for field in self.__fkeys:
             if field not in self.__fields:
                 self.__fields.append(field)
@@ -73,7 +67,7 @@ class Collection(object):
             else:
                 print(f"Found {rows.rowcount} rows in {id}({','.join(self.uniqueKeys or [])}){tname} with references:")
                 for name, collection in self.__fkeys.items():
-                    print(f"  {name} to {collection.id()}")
+                    print(f"  {name} to {collection.id}")
 
         for row in rows:
             pkitems = dict(zip(self.__fields, row))
@@ -128,7 +122,6 @@ class Collection(object):
             self.__fkeys[field] = coll
 
     def createNewFields(self, db, dbitem):
-        # Get existing columns
         db.execute(f"""
             SELECT column_name
             FROM information_schema.columns
@@ -144,7 +137,6 @@ class Collection(object):
 
             value = dbitem.get(field)
 
-            # TRUE foreign key: value is another lzdbItem
             if isinstance(value, LZDBItem):
                 db.execute(
                     f"ALTER TABLE {self.__id} "
@@ -152,42 +144,34 @@ class Collection(object):
                 )
                 continue
 
-            # Normal field -> VARCHAR
             newFields.append(field)
 
-        # Add normal fields
         for field in newFields:
             db.execute(f"ALTER TABLE {self.__id} ADD COLUMN {field} VARCHAR")
 
         self.__fields.extend(newFields)
 
     def createTable(self, db):
-        if self.__id is not None:
-            return
+        if self.__id is None:
+            ukeys = ",".join(self.uniqueKeys or [])
+            tname = self.name() if hasattr(self, "name") else ""
 
-        # Register this collection in the inventory table
-        ukeys = ",".join(self.uniqueKeys or [])
-        tname = self.name() if hasattr(self, "name") else ""
+            db.execute(
+                """
+                INSERT INTO lzdb(ukeys, tname)
+                VALUES (%s, %s)
+                ON CONFLICT (ukeys)
+                DO UPDATE SET
+                    tname = EXCLUDED.tname
+                RETURNING id
+                """,
+                (ukeys, tname),
+            )
+            res = db.fetchone()
+            self.__id = f"lzdb__{res[0]}"
 
-        db.execute(
-            """
-            INSERT INTO lzdb(ukeys, tname)
-            VALUES (%s, %s)
-            ON CONFLICT (ukeys)
-            DO UPDATE SET
-                ukeys = EXCLUDED.ukeys,
-                tname = EXCLUDED.tname
-            RETURNING id
-            """,
-            (ukeys, tname),
-        )
-        res = db.fetchone()
-        self.__id = f"lzdb__{res[0]}"
-
-        # Build CREATE TABLE statement for the actual collection table
         s = f"CREATE TABLE IF NOT EXISTS {self.__id}(id SERIAL PRIMARY KEY"
 
-        # Foreign keys
         for k, collection in self.__fkeys.items():
             fk = f"{k} INTEGER REFERENCES {collection.id}"
             s += f", {fk}"
@@ -197,9 +181,7 @@ class Collection(object):
         if data_fields:
             s += ", " + ", ".join(data_fields)
 
-        # Close CREATE TABLE
         s += ");"
 
         db.execute(s)
-
-
+        

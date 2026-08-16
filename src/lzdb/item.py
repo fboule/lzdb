@@ -46,10 +46,8 @@ class LZDBItem(dict):
             reltype = LZDB_REL_DIRECTED
 
         if isinstance(item, list):
-
             for it in item:
                 self.link(it, reltype)
-
             return
 
         self.__links.append({
@@ -62,9 +60,6 @@ class LZDBItem(dict):
         return tuple(self.__links)
 
     def set(self, **kwargs):
-        """
-        Update fields of the item (original lzdb behavior).
-        """
         for k, v in kwargs.items():
             self[k] = v
 
@@ -87,7 +82,6 @@ class LZDBItem(dict):
     @property
     def virtualKeys(self):
         if self.__collection is None:
-            return ()
+            return tuple(sorted([k for k, v in self.items() if not isinstance(v, list)]))
         return self.__collection.uniqueKeys
-
-
+    

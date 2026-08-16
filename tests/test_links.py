@@ -42,8 +42,8 @@ def test_link_creation():
           AND src_id=%s
     """,
     (
-        int(sat.collection().id().split('__')[1]),
-        sat.id()
+        int(sat.collection.id.split('__')[1]),
+        sat.id
     ))
 
     assert cur.fetchone()[0] == 2
@@ -120,10 +120,10 @@ def test_duplicate_link_inserted_once():
           AND dst_id=%s
     """,
     (
-        int(a.collection().id().split('__')[1]),
-        a.id(),
-        int(b.collection().id().split('__')[1]),
-        b.id()
+        int(a.collection.id.split('__')[1]),
+        a.id,
+        int(b.collection.id.split('__')[1]),
+        b.id
     ))
 
     assert cur.fetchone()[0] == 1
