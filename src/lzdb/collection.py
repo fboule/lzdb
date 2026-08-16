@@ -97,7 +97,7 @@ class Collection(object):
                 obj[field] = items[field]
 
             dbitem = self.__dbms.newItem(collection=self, **obj)
-            dbitem.id(items['id'])
+            dbitem.id = items['id']
 
             for field in items:
                 if field not in (self.uniqueKeys or []):

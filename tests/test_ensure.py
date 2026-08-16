@@ -37,7 +37,7 @@ def test_ensure_creates_when_missing():
 
     assert obj is not None
     assert obj["name"] == "ENSURE_CREATE_TEST"
-    assert obj.id() is not None
+    assert obj.id is not None
 
 
 def test_ensure_returns_existing_object():
@@ -61,14 +61,14 @@ def test_ensure_returns_existing_object():
     cur.execute(
         f"""
         SELECT MIN(id)
-        FROM {sat1.collection().id()}
+        FROM {sat1.collection.id}
         WHERE name='ENSURE_EXISTING_TEST'
         """
     )
 
     oldest_id = cur.fetchone()[0]
 
-    assert sat2.id() == oldest_id
+    assert sat2.id == oldest_id
 
 def test_ensure_does_not_create_duplicate_row():
     """
@@ -88,14 +88,14 @@ def test_ensure_does_not_create_duplicate_row():
 
     dbms.commit()
 
-    assert sat1.id() == sat2.id()
+    assert sat1.id == sat2.id
 
     cur = dbms.conn.cursor()
 
     cur.execute(
         f"""
         SELECT COUNT(*)
-        FROM {sat1.collection().id()}
+        FROM {sat1.collection.id}
         WHERE name = 'ENSURE_NO_DUPLICATE_TEST'
         """
     )
@@ -129,11 +129,11 @@ def test_ensure_returns_oldest_match():
     cur.execute(
         f"""
         SELECT MIN(id)
-        FROM {sat.collection().id()}
+        FROM {sat.collection.id}
         WHERE name = 'ENSURE_FIRST_MATCH_TEST'
         """
     )
 
     oldest_id = cur.fetchone()[0]
 
-    assert sat.id() == oldest_id
+    assert sat.id == oldest_id

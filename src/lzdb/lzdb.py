@@ -79,14 +79,14 @@ class LZDB(object):
 
             collection.read_fkeys(
                 db,
-                collection.id()
+                collection.id
             )
 
         for collection in self.__collections:
 
             collection.read(
                 db,
-                collection.id()
+                collection.id
             )
 
     @property
@@ -114,7 +114,7 @@ class LZDB(object):
         if matches:
             return min(
                 matches,
-                key=lambda item: item.id()
+                key=lambda item: item.id
             )
 
         return self.newItem(**refs)
@@ -162,7 +162,7 @@ class LZDB(object):
             collection.createTable(self.__db)
 
     def __saveItem(self, dbitem):
-        coll = dbitem.collection()
+        coll = dbitem.collection
 
         # Ensure schema is up to date
         coll.createNewFields(self.__db, dbitem)
@@ -178,7 +178,7 @@ class LZDB(object):
             value = dbitem[field]
 
             if isinstance(value, LZDBItem):
-                value = value.id()
+                value = value.id
 
             fields.append(field)
             values.append(value)
@@ -186,7 +186,7 @@ class LZDB(object):
         # ------------------------------------------------------------------
         # UPDATE existing row
         # ------------------------------------------------------------------
-        if dbitem.id() is not None:
+        if dbitem.id is not None:
 
             if len(fields) > 0:
 
@@ -196,12 +196,12 @@ class LZDB(object):
                 ]
 
                 sql = (
-                    f"UPDATE {coll.id()} "
+                    f"UPDATE {coll.id} "
                     f"SET {', '.join(assignments)} "
                     f"WHERE id=%s"
                 )
 
-                params = values + [dbitem.id()]
+                params = values + [dbitem.id]
 
                 self.__db.execute(sql, params)
 
@@ -215,7 +215,7 @@ class LZDB(object):
         if len(fields) == 0:
 
             sql = (
-                f"INSERT INTO {coll.id()} "
+                f"INSERT INTO {coll.id} "
                 f"DEFAULT VALUES "
                 f"RETURNING id"
             )
@@ -227,7 +227,7 @@ class LZDB(object):
             placeholders = ", ".join(["%s"] * len(values))
 
             sql = (
-                f"INSERT INTO {coll.id()} "
+                f"INSERT INTO {coll.id} "
                 f"({','.join(fields)}) "
                 f"VALUES ({placeholders}) "
                 f"RETURNING id"
@@ -238,14 +238,14 @@ class LZDB(object):
         res = self.__db.fetchone()
 
         if res is not None:
-            dbitem.id(res[0])
+            dbitem.id = res[0]
 
         dbitem.clearDirty()
 
     def __saveItems(self):
         for dbitem in self.__items:
 
-            if not dbitem.isDirty():
+            if not dbitem.isDirty:
                 continue
 
             self.__saveItem(dbitem)
@@ -266,10 +266,10 @@ class LZDB(object):
             on conflict do nothing
             """,
             (
-                src.collection().id().split('__')[1],
-                src.id(),
-                dst.collection().id().split('__')[1],
-                dst.id(),
+                src.collection.id.split('__')[1],
+                src.id,
+                dst.collection.id.split('__')[1],
+                dst.id,
                 reltype
             )
         )
@@ -277,15 +277,15 @@ class LZDB(object):
     def __saveLinks(self):
         for dbitem in self.__items:
 
-            for link in dbitem.links():
+            for link in dbitem.links:
 
                 target = link['item']
                 reltype = link['reltype']
 
-                if dbitem.id() is None:
+                if dbitem.id is None:
                     continue
 
-                if target.id() is None:
+                if target.id is None:
                     continue
 
                 self.__insertLink(
@@ -307,12 +307,12 @@ class LZDB(object):
         if collection is None:
             temp = LZDBItem(None, **refs)
 
-            ukeys = temp.virtualKeys()
-            fkeys = temp.foreignKeys()
+            ukeys = temp.virtualKeys
+            fkeys = temp.foreignKeys
 
             # Try existing collection
             for coll in self.__collections:
-                if coll.uniqueKeys() == ukeys:
+                if coll.uniqueKeys == ukeys:
                     collection = coll
                     break
 
@@ -331,24 +331,24 @@ class LZDB(object):
         return dbitem
 
     def collectionsNames(self):
-        return [ collection.name() for collection in self.__collections ]
+        return [ collection.name for collection in self.__collections ]
 
     def collections(self, ukeys = None, fkeys = None, id = None, name = None):
         if name is not None:
             for collection in self.__collections:
-                if collection.name() == name:
+                if collection.name == name:
                     return collection
             return None
         if id is not None:
             for collection in self.__collections:
-                if collection.id() == id:
+                if collection.id == id:
                     return collection
             return None
         if ukeys is None:
             return self.__collections
         ukeys = sorted(ukeys)
         for collection in self.__collections:
-            if collection.uniqueKeys() == ukeys:
+            if collection.uniqueKeys == ukeys:
                 return collection
         collection = Collection(self, ukeys=ukeys, fkeys=fkeys)
         self.__collections.append(collection)
@@ -360,12 +360,12 @@ class LZDB(object):
         items = []
         if collection is not None and 'id' in refs:
             for item in self.__items:
-                if item.id() == refs['id'] and item.collection() == collection:
-                    return item
+                if item.id == refs['id'] and item.collection == collection:
+                    return [ item ]
             return None
         elif collection is not None:
             for item in self.__items:
-                if item.collection() == collection:
+                if item.collection == collection:
                     items.append(item)
         else:
             for item in self.__items:
@@ -387,8 +387,8 @@ class LZDB(object):
         """
 
         params = [
-            int(item.collection().id().split('__')[1]),
-            item.id()
+            int(item.collection.id.split('__')[1]),
+            item.id
         ]
 
         if reltype is not None:
