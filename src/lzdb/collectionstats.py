@@ -69,13 +69,7 @@ class CollectionStats:
             imb = self.cluster_imbalance(fs)
             H = self.entropy(fs)
 
-            if (
-                p >= 0.8 and
-                u <= 0.95 and
-                s >= 0.9 and
-                imb <= 0.9 and
-                H >= 0.5
-            ):
+            if (p >= 0.8 and u <= 0.95 and s >= 0.9 and imb <= 0.9 and H >= 0.5):
                 candidates.append(fname)
 
         return sorted(candidates)
