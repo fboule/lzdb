@@ -22,19 +22,11 @@ class LZDB(object):
         self.__items = []
         LZDB.traceon = traceon
 
-        self.__db.execute(
-            "select exists(select 1 from information_schema.tables where table_schema='public' and table_name='lzdb')"
-        )
-        if not self.__db.fetchone()[0]:
-            self.__db.execute("""
-                CREATE TABLE IF NOT EXISTS lzdb (
-                    id SERIAL PRIMARY KEY,
-                    ukeys TEXT UNIQUE,
-                    tname TEXT
-                );
-            """)
+        # Ensure core metadata tables are present
+        self.__createSystemTables()
 
-        self.__db.execute("select id, ukeys, tname from lzdb")
+        # Load collections
+        self.__db.execute("SELECT id, ukeys, tname FROM lzdb")
         tables = self.__db.fetchall()
 
         for table in tables:
@@ -47,6 +39,7 @@ class LZDB(object):
             collection._Collection__id = f"lzdb__{table[0]}"
             self.__collections.append(collection)
 
+        # Load foreign keys & items
         for collection in self.__collections:
             collection.read_fkeys(self.__db, collection.id)
 
@@ -73,10 +66,7 @@ class LZDB(object):
         matches = self.items(**refs)
 
         if matches:
-            return min(
-                matches,
-                key=lambda item: item.id
-            )
+            return min(matches, key=lambda item: item.id if item.id is not None else float('inf'))
 
         return self.newItem(**refs)
 
@@ -85,37 +75,47 @@ class LZDB(object):
         self.__createCollections()
         self.__saveItems()
         self.__saveLinks()
-
         self.__conn.commit()
 
     def __createSystemTables(self):
+        # ENUM type for reltype
         self.__db.execute("""
-            create table if not exists lzdb(
-                id serial primary key,
-                ukeys varchar,
-                tname varchar,
-                unique(ukeys)
-            )
+            DO $$
+            BEGIN
+                IF NOT EXISTS (
+                    SELECT 1 FROM pg_type WHERE typname = 'lzdb_reltype'
+                ) THEN
+                    CREATE TYPE lzdb_reltype AS ENUM ('directed', 'undirected');
+                END IF;
+            END$$;
         """)
 
+        # Collections table
         self.__db.execute("""
-            create table if not exists lzdb_links(
-                src_collection integer not null,
-                src_id integer not null,
+            CREATE TABLE IF NOT EXISTS lzdb(
+                id SERIAL PRIMARY KEY,
+                ukeys VARCHAR UNIQUE,
+                tname VARCHAR
+            );
+        """)
 
-                dst_collection integer not null,
-                dst_id integer not null,
+        # Links table using ENUM
+        self.__db.execute("""
+            CREATE TABLE IF NOT EXISTS lzdb_links(
+                src_collection INTEGER NOT NULL,
+                src_id INTEGER NOT NULL,
+                dst_collection INTEGER NOT NULL,
+                dst_id INTEGER NOT NULL,
+                reltype lzdb_reltype NOT NULL DEFAULT 'directed',
 
-                reltype smallint not null default 0,
-
-                unique(
+                UNIQUE(
                     src_collection,
                     src_id,
                     dst_collection,
                     dst_id,
                     reltype
                 )
-            )
+            );
         """)
 
     def __createCollections(self):
@@ -142,13 +142,14 @@ class LZDB(object):
             fields.append(field)
             values.append(value)
 
+        # UPDATE existing item
         if dbitem.id is not None:
             if len(fields) > 0:
-                assignments = [f"{field}=%s" for field in fields]
+                assignments = [f'"{field}"=%s' for field in fields]
                 sql = (
-                    f"UPDATE {coll.id} "
-                    f"SET {', '.join(assignments)} "
-                    f"WHERE id=%s"
+                    f'UPDATE "{coll.id}" '
+                    f'SET {", ".join(assignments)} '
+                    f'WHERE id=%s'
                 )
                 params = values + [dbitem.id]
                 self.__db.execute(sql, params)
@@ -156,20 +157,22 @@ class LZDB(object):
             dbitem.clearDirty()
             return
 
+        # INSERT new item
         if len(fields) == 0:
             sql = (
-                f"INSERT INTO {coll.id} "
-                f"DEFAULT VALUES "
-                f"RETURNING id"
+                f'INSERT INTO "{coll.id}" '
+                f'DEFAULT VALUES '
+                f'RETURNING id'
             )
             self.__db.execute(sql)
         else:
             placeholders = ", ".join(["%s"] * len(values))
+            quoted_fields = ",".join([f'"{f}"' for f in fields])
             sql = (
-                f"INSERT INTO {coll.id} "
-                f"({','.join(fields)}) "
-                f"VALUES ({placeholders}) "
-                f"RETURNING id"
+                f'INSERT INTO "{coll.id}" '
+                f'({quoted_fields}) '
+                f'VALUES ({placeholders}) '
+                f'RETURNING id'
             )
             self.__db.execute(sql, values)
 
@@ -181,37 +184,47 @@ class LZDB(object):
 
     def __saveItems(self):
         for dbitem in self.__items:
-            if not dbitem.isDirty:
-                continue
-            self.__saveItem(dbitem)
+            if dbitem.isDirty:
+                self.__saveItem(dbitem)
+
+    def __extract_collection_id(self, collection):
+        if not collection or not collection.id:
+            return None
+        return int(collection.id.split('__')[1])
 
     def __insertLink(self, src, dst, reltype):
+        reltype_str = 'directed' if reltype == LZDB_REL_DIRECTED else 'undirected'
+
+        src_coll_id = self.__extract_collection_id(src.collection)
+        dst_coll_id = self.__extract_collection_id(dst.collection)
+
+        if src_coll_id is None or dst_coll_id is None:
+            return
+
         self.__db.execute(
             """
-            insert into lzdb_links(
+            INSERT INTO lzdb_links(
                 src_collection,
                 src_id,
                 dst_collection,
                 dst_id,
                 reltype
             )
-            values(
-                %s,%s,%s,%s,%s
-            )
-            on conflict do nothing
+            VALUES(%s, %s, %s, %s, %s)
+            ON CONFLICT DO NOTHING
             """,
             (
-                src.collection.id.split('__')[1],
+                src_coll_id,
                 src.id,
-                dst.collection.id.split('__')[1],
+                dst_coll_id,
                 dst.id,
-                reltype
+                reltype_str
             )
         )
 
     def __saveLinks(self):
         for dbitem in self.__items:
-            for link in dbitem.links:
+            for link in getattr(dbitem, 'links', []):
                 target = link['item']
                 reltype = link['reltype']
 
@@ -247,11 +260,13 @@ class LZDB(object):
                 if collection.name() == name:
                     return collection
             return None
+
         if id is not None:
             for collection in self.__collections:
                 if collection.id == id:
                     return collection
             return None
+
         if ukeys is None:
             return self.__collections
 
@@ -268,50 +283,81 @@ class LZDB(object):
     def items(self, collection=None, **refs):
         if len(refs) == 0 and collection is None:
             return self.__items
+
         items = []
-        if collection is not None and 'id' in refs:
-            for item in self.__items:
-                if item.id == refs['id'] and item.collection == collection:
-                    items.append(item)
-            return items
-        elif collection is not None:
-            for item in self.__items:
-                if item.collection == collection:
-                    items.append(item)
-        else:
-            for item in self.__items:
-                if refs.items() <= item.items():
-                    items.append(item)
+
+        for item in self.__items:
+            if collection is not None and item.collection != collection:
+                continue
+
+            if refs and not (refs.items() <= item.items()):
+                continue
+
+            items.append(item)
+
         return items
 
     def linkedItems(self, item, reltype=None):
-        sql = """
-            select
-                dst_collection,
-                dst_id
-            from
-                lzdb_links
-            where
-                src_collection=%s
-            and
-                src_id=%s
-        """
+        # Always return a list, never None
+        src_coll_id = self.__extract_collection_id(getattr(item, 'collection', None))
+        if src_coll_id is None or item.id is None:
+            return []
 
-        params = [
-            int(item.collection.id.split('__')[1]),
-            item.id
-        ]
+        # Build SQL depending on reltype
+        if reltype is None:
+            sql = """
+                SELECT dst_collection, dst_id
+                FROM lzdb_links
+                WHERE src_collection = %s AND src_id = %s
 
-        if reltype is not None:
-            sql += " and reltype=%s"
-            params.append(reltype)
+                UNION
 
-        self.__db.execute(sql, params)
+                SELECT src_collection, src_id
+                FROM lzdb_links
+                WHERE dst_collection = %s AND dst_id = %s
+                AND reltype = 'undirected'
+            """
+            params = [src_coll_id, item.id, src_coll_id, item.id]
+
+        else:
+            reltype_str = 'directed' if reltype == LZDB_REL_DIRECTED else 'undirected'
+
+            if reltype == LZDB_REL_DIRECTED:
+                sql = """
+                    SELECT dst_collection, dst_id
+                    FROM lzdb_links
+                    WHERE src_collection = %s AND src_id = %s
+                    AND reltype = %s
+                """
+                params = [src_coll_id, item.id, reltype_str]
+
+            else:  # undirected
+                sql = """
+                    SELECT dst_collection, dst_id
+                    FROM lzdb_links
+                    WHERE src_collection = %s AND src_id = %s
+                    AND reltype = %s
+
+                    UNION
+
+                    SELECT src_collection, src_id
+                    FROM lzdb_links
+                    WHERE dst_collection = %s AND dst_id = %s
+                    AND reltype = %s
+                """
+                params = [
+                    src_coll_id, item.id, reltype_str,
+                    src_coll_id, item.id, reltype_str
+                ]
+
+        # Use a fresh cursor so committed rows are visible
+        cur = self.__conn.cursor()
+        cur.execute(sql, params)
+        rows = cur.fetchall()
 
         result = []
-
-        for table_name, obj_id in self.__db.fetchall():
-            coll = self.collections(id=f"lzdb__{table_name}")
+        for coll_id, obj_id in rows:
+            coll = self.collections(id=f"lzdb__{coll_id}")
             if coll is None:
                 continue
 
@@ -320,4 +366,3 @@ class LZDB(object):
                 result.extend(matched)
 
         return result
-    

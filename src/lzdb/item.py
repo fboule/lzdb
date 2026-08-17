@@ -5,9 +5,9 @@ class LZDBItem(dict):
         super().__init__()
 
         self.__collection = collection
-        self.__id = None
         self.__dirty = False
 
+        # Each link is: { "item": <LZDBItem>, "reltype": <enum string> }
         self.__links = []
 
         for k, v in kwargs.items():
@@ -42,17 +42,36 @@ class LZDBItem(dict):
         return tuple(self.keys())
 
     def link(self, item, reltype=None):
+        """
+        reltype may be:
+            - None → defaults to LZDB_REL_DIRECTED
+            - LZDB_REL_DIRECTED (0)
+            - LZDB_REL_UNDIRECTED (1)
+            - or directly the enum string ('directed', 'undirected')
+        """
+
+        # Default
         if reltype is None:
             reltype = LZDB_REL_DIRECTED
 
+        # Convert numeric → enum string
+        if reltype == LZDB_REL_DIRECTED:
+            reltype_str = "directed"
+        elif reltype == LZDB_REL_UNDIRECTED:
+            reltype_str = "undirected"
+        else:
+            # Already a string ('directed' or 'undirected')
+            reltype_str = reltype
+
+        # Support linking lists
         if isinstance(item, list):
             for it in item:
-                self.link(it, reltype)
+                self.link(it, reltype_str)
             return
 
         self.__links.append({
             "item": item,
-            "reltype": reltype
+            "reltype": reltype_str
         })
 
     @property
@@ -73,15 +92,14 @@ class LZDBItem(dict):
 
     @property
     def id(self):
-        return self.__id
+        return self.get('id')
 
     @id.setter
     def id(self, value):
-        self.__id = value
+        self['id'] = value
 
     @property
     def virtualKeys(self):
         if self.__collection is None:
             return tuple(sorted([k for k, v in self.items() if not isinstance(v, list)]))
         return self.__collection.uniqueKeys
-    
