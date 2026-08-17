@@ -6,6 +6,7 @@ class LZDBItem(dict):
 
         self.__collection = collection
         self.__dirty = False
+        self.__id = None
 
         # Each link is: { "item": <LZDBItem>, "reltype": <enum string> }
         self.__links = []
@@ -92,11 +93,11 @@ class LZDBItem(dict):
 
     @property
     def id(self):
-        return self.get('id')
+        return self.__id
 
     @id.setter
     def id(self, value):
-        self['id'] = value
+        self.__id = value
 
     @property
     def virtualKeys(self):

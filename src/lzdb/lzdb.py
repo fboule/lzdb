@@ -290,7 +290,8 @@ class LZDB(object):
             if collection is not None and item.collection != collection:
                 continue
 
-            if refs and not (refs.items() <= item.items()):
+            myitems = {**dict(item.items()), "id": item.id}
+            if refs and not (refs.items() <= myitems.items()):
                 continue
 
             items.append(item)
