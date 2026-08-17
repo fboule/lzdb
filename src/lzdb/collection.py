@@ -53,6 +53,25 @@ class Collection(object):
             return None
         return tuple(self.__ukeys)
 
+    def parse_value(self, s):
+        if type(s) is not str:
+            return s
+        
+        if s.isdigit(): 
+            return int(s)
+
+        try:
+            return float(s)
+        except:
+            pass
+
+        try:
+            return datetime.datetime.strptime(s, "%Y-%m-%d %H:%M:%S")
+        except:
+            pass
+
+        return s
+        
     def read(self, db, id):
         self.__id = id
         self.read_fkeys(db, id)
@@ -77,10 +96,7 @@ class Collection(object):
                 if kk in self.__fkeys:
                     items[kk] = self.__dbms.items(collection=self.__fkeys[kk], id=pkitems[kk])
                 else:
-                    try:
-                        items[kk] = datetime.datetime.strptime(pkitems[kk], "%Y-%m-%d %H:%M:%S")
-                    except:
-                        items[kk] = pkitems[kk]
+                    items[kk] = self.parse_value(pkitems[kk])
 
             obj = {}
 
@@ -139,15 +155,15 @@ class Collection(object):
 
             if isinstance(value, LZDBItem):
                 db.execute(
-                    f"ALTER TABLE \"{self.__id}\" "
-                    f"ADD COLUMN \"{field}\" INTEGER REFERENCES \"{value.collection.id}\""
+                    f'ALTER TABLE "{self.__id}" '
+                    f'ADD COLUMN "{field}" INTEGER REFERENCES "{value.collection.id}"'
                 )
                 continue
 
             newFields.append(field)
 
         for field in newFields:
-            db.execute(f"ALTER TABLE \"{self.__id}\" ADD COLUMN \"{field}\" VARCHAR")
+            db.execute(f'ALTER TABLE "{self.__id}" ADD COLUMN "{field}" VARCHAR')
 
         self.__fields.extend(newFields)
 
@@ -173,11 +189,11 @@ class Collection(object):
         s = f"CREATE TABLE IF NOT EXISTS {self.__id}(id SERIAL PRIMARY KEY"
 
         for k, collection in self.__fkeys.items():
-            fk = f"\"{k}\" INTEGER REFERENCES \"{collection.id}\""
-            s += f", {fk}"
+            fk = f'"{k}" INTEGER REFERENCES "{collection.id}"'
+            s += f', {fk}'
 
         fields = self.uniqueKeys or []
-        data_fields = [f"\"{x}\" VARCHAR" for x in fields if x not in self.__fkeys]
+        data_fields = [f'"{x}" VARCHAR' for x in fields if x not in self.__fkeys]
         if data_fields:
             s += ", " + ", ".join(data_fields)
 
