@@ -57,7 +57,7 @@ class Collection(object):
         self.__id = id
         self.read_fkeys(db, id)
 
-        rows = db.execute("select * from %s" % id)
+        rows = db.execute(f'SELECT * FROM "{id}"')
         self.__fields = [desc[0] for desc in db.description]
 
         if self.__dbms.traceon:
@@ -91,7 +91,7 @@ class Collection(object):
                 obj[field] = items[field]
 
             dbitem = self.__dbms.newItem(collection=self, **obj)
-            dbitem.id = items['id']
+            dbitem.id(items['id'])
 
             for field in items:
                 if field not in (self.uniqueKeys or []):
@@ -139,15 +139,15 @@ class Collection(object):
 
             if isinstance(value, LZDBItem):
                 db.execute(
-                    f"ALTER TABLE {self.__id} "
-                    f"ADD COLUMN {field} INTEGER REFERENCES {value.collection.id}"
+                    f"ALTER TABLE \"{self.__id}\" "
+                    f"ADD COLUMN \"{field}\" INTEGER REFERENCES \"{value.collection.id}\""
                 )
                 continue
 
             newFields.append(field)
 
         for field in newFields:
-            db.execute(f"ALTER TABLE {self.__id} ADD COLUMN {field} VARCHAR")
+            db.execute(f"ALTER TABLE \"{self.__id}\" ADD COLUMN \"{field}\" VARCHAR")
 
         self.__fields.extend(newFields)
 
@@ -173,11 +173,11 @@ class Collection(object):
         s = f"CREATE TABLE IF NOT EXISTS {self.__id}(id SERIAL PRIMARY KEY"
 
         for k, collection in self.__fkeys.items():
-            fk = f"{k} INTEGER REFERENCES {collection.id}"
+            fk = f"\"{k}\" INTEGER REFERENCES \"{collection.id}\""
             s += f", {fk}"
 
         fields = self.uniqueKeys or []
-        data_fields = [f"{x} VARCHAR" for x in fields if x not in self.__fkeys]
+        data_fields = [f"\"{x}\" VARCHAR" for x in fields if x not in self.__fkeys]
         if data_fields:
             s += ", " + ", ".join(data_fields)
 
