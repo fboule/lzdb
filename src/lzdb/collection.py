@@ -35,6 +35,10 @@ class Collection(object):
     def id(self):
         return self.__id
 
+    @property
+    def fkeys(self):
+        return tuple(self.__fkeys)
+
     def name(self, tname=None):
         if tname is not None:
             self.__tname = tname
@@ -94,7 +98,8 @@ class Collection(object):
 
             for kk in self.__fields:
                 if kk in self.__fkeys:
-                    items[kk] = self.__dbms.items(collection=self.__fkeys[kk], id=pkitems[kk])
+                    matches = self.__dbms.items(collection=self.__fkeys[kk], id=pkitems[kk])
+                    items[kk] = matches[0] if len(matches) == 1 else (matches or None)
                 else:
                     items[kk] = self.parse_value(pkitems[kk])
 

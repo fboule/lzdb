@@ -18,6 +18,10 @@ class LZDBItem(dict):
         super().__setitem__(key, value)
         self.__dirty = True
 
+    def update(self, *args, **kwargs):
+        super().update(*args, **kwargs)
+        self.__dirty = True
+
     def markDirty(self):
         self.__dirty = True
 
@@ -51,21 +55,17 @@ class LZDBItem(dict):
             - or directly the enum string ('directed', 'undirected')
         """
 
-        # Default
         if reltype is None:
             reltype = LZDB_REL_DIRECTED
 
-        # Convert numeric → enum string
         if reltype == LZDB_REL_DIRECTED:
             reltype_str = "directed"
         elif reltype == LZDB_REL_UNDIRECTED:
             reltype_str = "undirected"
         else:
-            # Already a string ('directed' or 'undirected')
             reltype_str = reltype
 
-        # Support linking lists
-        if isinstance(item, list):
+        if isinstance(item, (list, tuple)):
             for it in item:
                 self.link(it, reltype_str)
             return
@@ -74,10 +74,23 @@ class LZDBItem(dict):
             "item": item,
             "reltype": reltype_str
         })
+        self.markDirty()
 
     @property
     def links(self):
         return tuple(self.__links)
+
+    def del_link(self, item):
+        original_len = len(self.__links)
+        self.__links = [x for x in self.__links if x["item"] is not item and x["item"] != item]
+        
+        if len(self.__links) < original_len:
+            self.markDirty()
+
+    def clear_links(self):
+        if self.__links:
+            self.__links.clear()
+            self.markDirty()
 
     def set(self, **kwargs):
         for k, v in kwargs.items():

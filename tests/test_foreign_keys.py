@@ -171,7 +171,7 @@ def test_reload_preserves_fk_relationship():
     assert satellite is not None
     assert event is not None
 
-    assert event["satellite"][0] is satellite
+    assert event["satellite"] is satellite
 
 def test_fk_added_after_object_creation():
     dbms = fresh_db()
@@ -253,4 +253,4 @@ def test_reload_persists_fk():
     assert reloaded_event is not None
     assert "satellite" in reloaded_event
     assert reloaded_event["satellite"] is not None
-    assert reloaded_event["satellite"][0].id == satellite_id
+    assert reloaded_event["satellite"].id == satellite_id

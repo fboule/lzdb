@@ -140,7 +140,7 @@ class LZDB(object):
                 value = value.id
 
             fields.append(field)
-            values.append(value)
+            values.append(None if value is None else str(value))
 
         # UPDATE existing item
         if dbitem.id is not None:
@@ -193,7 +193,7 @@ class LZDB(object):
         return int(collection.id.split('__')[1])
 
     def __insertLink(self, src, dst, reltype):
-        reltype_str = 'directed' if reltype == LZDB_REL_DIRECTED else 'undirected'
+        reltype_str = 'directed' if reltype == LZDB_REL_DIRECTED or reltype == 'directed' else 'undirected'
 
         src_coll_id = self.__extract_collection_id(src.collection)
         dst_coll_id = self.__extract_collection_id(dst.collection)
@@ -223,18 +223,27 @@ class LZDB(object):
         )
 
     def __saveLinks(self):
-        for dbitem in self.__items:
-            for link in getattr(dbitem, 'links', []):
-                target = link['item']
-                reltype = link['reltype']
-
-                if dbitem.id is None or target.id is None:
+            for dbitem in self.__items:
+                src_coll_id = self.__extract_collection_id(dbitem.collection)
+                if dbitem.id is None or src_coll_id is None:
                     continue
 
-                self.__insertLink(dbitem, target, reltype)
+                # Clear DB links for dirty items so del_link/clear_links changes reflect in SQL
+                if dbitem.isDirty:
+                    self.__db.execute(
+                        "DELETE FROM lzdb_links WHERE src_collection = %s AND src_id = %s",
+                        (src_coll_id, dbitem.id)
+                    )
 
-                if reltype == LZDB_REL_UNDIRECTED:
-                    self.__insertLink(target, dbitem, reltype)
+                for link in getattr(dbitem, 'links', []):
+                    target = link['item']
+                    reltype = link['reltype']
+
+                    if target.id is None:
+                        continue
+
+                    # Insert canonical row (linkedItems SQL already queries both src/dst symmetrically for undirected)
+                    self.__insertLink(dbitem, target, reltype)
 
     def newItem(self, collection=None, id=None, **refs):
         if collection is None:
@@ -299,12 +308,10 @@ class LZDB(object):
         return items
 
     def linkedItems(self, item, reltype=None):
-        # Always return a list, never None
         src_coll_id = self.__extract_collection_id(getattr(item, 'collection', None))
         if src_coll_id is None or item.id is None:
             return []
 
-        # Build SQL depending on reltype
         if reltype is None:
             sql = """
                 SELECT dst_collection, dst_id
@@ -321,9 +328,9 @@ class LZDB(object):
             params = [src_coll_id, item.id, src_coll_id, item.id]
 
         else:
-            reltype_str = 'directed' if reltype == LZDB_REL_DIRECTED else 'undirected'
+            reltype_str = 'directed' if reltype == LZDB_REL_DIRECTED or reltype == 'directed' else 'undirected'
 
-            if reltype == LZDB_REL_DIRECTED:
+            if reltype == LZDB_REL_DIRECTED or reltype == 'directed':
                 sql = """
                     SELECT dst_collection, dst_id
                     FROM lzdb_links
@@ -351,7 +358,6 @@ class LZDB(object):
                     src_coll_id, item.id, reltype_str
                 ]
 
-        # Use a fresh cursor so committed rows are visible
         cur = self.__conn.cursor()
         cur.execute(sql, params)
         rows = cur.fetchall()
@@ -367,3 +373,56 @@ class LZDB(object):
                 result.extend(matched)
 
         return result
+
+    def delete(self, item, cleanup_fks=True):
+        coll = item.collection
+        if coll is None or item.id is None:
+            return False
+
+        if cleanup_fks:
+            self.cleanup_fk_references(item)
+
+        self.unlink(item)
+
+        cur = self.__conn.cursor()
+        cur.execute(f'DELETE FROM "{coll.id}" WHERE id = %s', (item.id,))
+
+        self.__items = [i for i in self.__items if i is not item]
+
+        return True
+
+    def unlink(self, item):
+        coll_id = self.__extract_collection_id(getattr(item, 'collection', None))
+        if coll_id is None or item.id is None:
+            return False
+
+        cur = self.__conn.cursor()
+        cur.execute("""
+            DELETE FROM lzdb_links
+            WHERE (src_collection = %s AND src_id = %s)
+            OR (dst_collection = %s AND dst_id = %s)
+        """, (coll_id, item.id, coll_id, item.id))
+
+        item.clear_links()
+
+        for other in self.__items:
+            other.del_link(item)
+
+        return True
+
+    def cleanup_fk_references(self, target_item):
+        if target_item is None or target_item.id is None:
+            return
+
+        for item in self.__items:
+            for key in list(item.keys()):
+                if item[key] is target_item or item[key] == target_item.id:
+                    item[key] = None
+                    item.markDirty()
+
+        cur = self.__conn.cursor()
+
+        for collection in self.__collections:
+            for key in collection.fkeys:
+                sql = f'UPDATE "{collection.id}" SET "{key}" = NULL WHERE "{key}" = %s'
+                cur.execute(sql, (target_item.id,))
