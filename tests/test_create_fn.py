@@ -46,7 +46,7 @@ item4 = lzitem(param='2004', starttime='04-jan-2000:00:00:00', endtime='05-jan-2
 
 print(type(item1.collection))
 print(item1.collection)
-item1.collection.name("time of event")
+item1.collection.name = "time of event"
 
 dbms.commit()
 
@@ -60,7 +60,7 @@ item3 = lzitem(refers=item1)
 item3['clusters']=[2,3,4]
 item3['freqmap']=[5,6,7]
 
-item2.collection.name("clusters and frequency map")
+item2.collection.name = "clusters and frequency map"
 
 dbms.commit()
 
@@ -69,7 +69,7 @@ item5 = lzitem(refers1=item1,refers2=item2)
 # item5.set(k=v) and item5[k]=v are identical
 item5.set(timefreq=[1,2,5])
 
-item5.collection.name("time frequency")
+item5.collection.name = "time frequency"
 
 dbms.commit()
 

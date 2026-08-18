@@ -261,12 +261,12 @@ class LZDB(object):
         return dbitem
 
     def collectionsNames(self):
-        return [collection.name() for collection in self.__collections]
+        return [collection.name for collection in self.__collections]
 
     def collections(self, ukeys=None, fkeys=None, id=None, name=None):
         if name is not None:
             for collection in self.__collections:
-                if collection.name() == name:
+                if collection.name == name:
                     return collection
             return None
 

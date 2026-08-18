@@ -39,10 +39,13 @@ class Collection(object):
     def fkeys(self):
         return tuple(self.__fkeys)
 
-    def name(self, tname=None):
-        if tname is not None:
-            self.__tname = tname
+    @property
+    def name(self):
         return self.__tname
+
+    @name.setter
+    def name(self, tname=None):
+        self.__tname = tname
 
     def extendUniqueKeys(self, ukeys):
         if self.__ukeys is None or ukeys is None:
