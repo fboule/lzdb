@@ -1,36 +1,34 @@
 import glob
 import pandas as pd
+from pathlib import Path
 
 class lzdict(dict):
-    __loader = None
-
     class parquet(object):
-        def get(self, name, folder = "data"):
-            filelist = glob.glob("%s/*%s*" % (folder, name))
-            if len(filelist) != 1:
-                return None
-            filepath = filelist[0]
-            filename = filepath.split('_')[0].split('/')[1]
-            print("Parquet::Get %s" % filename)
-            return pd.read_parquet(filepath)
+        def get(self, obj):
+            print("Parquet::Get %s" % obj['filename'])
+            return pd.read_parquet(obj['filepath'])
 
     class csv(object):
-        def get(self, name, folder = "data"):
-            filelist = glob.glob("%s/*%s*" % (folder, name))
-            if len(filelist) != 1:
-                return None
-            filepath = filelist[0]
-            filename = filepath.split('_')[0].split('/')[1]
-            print("CSV::Get %s" % filename)
-            return pd.read_csv(filepath)
+        def get(self, obj):
+            print("CSV::Get %s" % obj['filename'])
+            return pd.read_csv(obj['filepath'])
 
-    def __init__(self, loader = None):
-        self.__loader = loader
-        if loader is None:
-            self.__loader = lzdict.parquet()
+    __loader = { 'parquet': parquet, 'csv': csv }
+
+    def __init__(self, folder):
+        filelist = glob.glob(f"{folder}/*")
+        for filepath in filelist:
+            filename = filepath.split('/')[1]
+            filetitle = Path(filepath).stem
+            filetype = Path(filename).suffix.strip('.')
+            self.__setitem__(filetitle, { 'type': filetype, 'filepath': filepath, 'filename': filename, 'data': None })
 
     def __getitem__(self, key):
-        if not super().__contains__(key):
-            self[key] = self.__loader.get(key)
-        return super().__getitem__(key)
+        realkey = next((k for k in self.keys() if key in k), None)
+        if realkey is None:
+            return None
+        obj = super().__getitem__(realkey)
+        if obj['data'] is None:
+            obj['data'] = self.__loader[obj['type']]().get(obj)
+        return obj['data']
 
