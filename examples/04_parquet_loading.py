@@ -10,12 +10,12 @@ import pprint
 
 pp = pprint.PrettyPrinter().pprint
 
-dd = lzdict()
+ld = lzdict()
 
 # Load any file matching *PQTFILE* in data/
-data = dd["PQTFILE"]
+data = ld["PQTFILE"]
 
 print("Loaded parquet data:")
 pp(data)
 
-print("Keys in dictionary:", dd.keys())
+print("Keys in dictionary:", ld.keys())

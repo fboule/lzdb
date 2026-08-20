@@ -58,7 +58,7 @@ class LZDB(object):
             'lzitems': self.items,
             'lzc': self.collections,
             'lzcnames': self.collectionsNames,
-            'dd': lzdict('data'),
+            'ld': lzdict('data'),
             'pp': pprint.PrettyPrinter().pprint,
         })
 
