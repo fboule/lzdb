@@ -75,7 +75,7 @@ dbms = LZDB(conn, traceon=True)
 
 ### Exposing Namespace Helpers
 
-To streamline script development, expose global helper shortcuts (`lzitem`, `lzitems`, `lzc`, `lzcnames`, `dd`, `pp`) directly into your current namespace:
+To streamline script development, expose global helper shortcuts (`lzitem`, `lzitems`, `lzc`, `lzcnames`, `ld`, `pp`) directly into your current namespace:
 
 ```python
 dbms.expose()
@@ -198,10 +198,10 @@ collection_items = dbms.items(collection=my_collection)
 For large analytical files, `lzdict` provides lazy-loading wrappers around local Parquet storage:
 
 ```python
-dd = lzdict()
+ld = lzdict()
 
 # Loads and parses Parquet file contents on access
-df = dd["PQTFILE"]
+df = ld["PQTFILE"]
 ```
 
 ---
