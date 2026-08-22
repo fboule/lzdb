@@ -87,7 +87,7 @@ def test_virtual_pk_same_schema_goes_to_same_collection():
         endtime="05-jan-2000:00:00:00"
     )
 
-    assert item1.collection() is item2.collection()
+    assert item1.collection is item2.collection
 
 
 def test_virtual_pk_different_schema_creates_new_collection():
@@ -107,7 +107,7 @@ def test_virtual_pk_different_schema_creates_new_collection():
         starttime="03-jan-2000:00:00:00"
     )
 
-    assert item1.collection() is not item2.collection()
+    assert item1.collection is not item2.collection
 
 
 def test_virtual_pk_allows_duplicate_rows():
@@ -131,11 +131,11 @@ def test_virtual_pk_allows_duplicate_rows():
 
     dbms.commit()
 
-    assert item1.id() != item2.id()
+    assert item1.id != item2.id
 
     cur = dbms.conn.cursor()
 
-    table_name = item1.collection().id()
+    table_name = item1.collection.id
 
     cur.execute(f"SELECT COUNT(*) FROM {table_name}")
 
@@ -156,7 +156,7 @@ def test_list_fields_not_in_virtual_key():
         values=[4, 5, 6]
     )
 
-    assert item1.collection() is item2.collection()
+    assert item1.collection is item2.collection
 
 def test_collection_reuse_after_commit():
     dbms = fresh_db()
@@ -173,7 +173,7 @@ def test_collection_reuse_after_commit():
         b="4"
     )
 
-    assert item1.collection() is item2.collection()
+    assert item1.collection is item2.collection
 
 def test_empty_virtual_key_collection():
     dbms = fresh_db()
@@ -183,5 +183,5 @@ def test_empty_virtual_key_collection():
 
     dbms.commit()
 
-    assert a.collection() is b.collection()
+    assert a.collection is b.collection
 

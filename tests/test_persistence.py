@@ -44,5 +44,5 @@ def test_reload_persists_items():
 
     loaded = items[0]
 
-    assert loaded["param"] == "2004"
+    assert loaded["param"] == 2004
 

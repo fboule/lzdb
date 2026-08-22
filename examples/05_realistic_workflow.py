@@ -10,9 +10,6 @@ A realistic workflow combining:
 
 import psycopg as pg
 from lzdb import *
-import pprint
-
-pp = pprint.PrettyPrinter().pprint
 
 dbms = LZDB(
     pg.connect(

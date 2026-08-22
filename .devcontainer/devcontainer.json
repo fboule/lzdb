@@ -1,6 +1,0 @@
-{
-  "name": "Python Dev Container",
-  "image": "internalrepo.secu.lu/ciss.devops-docker/baseimage/ubi-python:10.1-py3.12-v1",
-  "postCreateCommand": "bash -lc 'source .devcontainer/devcontainer.env; python_init; pip install .'",
-  "remoteUser": "root"
-}
